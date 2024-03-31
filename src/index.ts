@@ -13,7 +13,7 @@ function init(reveal: RevealApi) {
         swordpointElement.setAttribute("data-prevent-swipe", "true")
         reveal.getRevealElement()?.appendChild(swordpointElement)
         const reactRoot = ReactClient.createRoot(swordpointElement)
-        reactRoot.render(React.createElement(Editor));
+        reactRoot.render(React.createElement(Editor, { reveal }));
     }
 }
 
