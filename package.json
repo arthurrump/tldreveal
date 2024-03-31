@@ -1,0 +1,22 @@
+{
+  "name": "swordpoint",
+  "scripts": {
+    "demo": "esbuild demo/index.ts --bundle --sourcemap '--define:process.env.NODE_ENV=\"dev\"' '--define:process.env.IS_PREACT=\"false\"' --outfile=demo/index.js"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.73",
+    "@types/react-dom": "^18.2.23",
+    "@types/reveal.js": "^5.0.3",
+    "esbuild": "^0.20.2",
+    "reveal.js": "^5.0.5",
+    "typescript": "^5.4.3"
+  },
+  "peerDependencies": {
+    "reveal.js": "^5.0.5"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "^0.17.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
