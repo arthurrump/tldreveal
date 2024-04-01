@@ -12,6 +12,15 @@
     pointer-events: none;
 }
 
-.tl-container {
+.swordpoint-overlay .tl-container {
     --color-background: rgba(255, 255, 255, 0);
+}
+
+.swordpoint-overlay .tl-canvas, .swordpoint-overlay .tl-container > img {
+    width: calc(var(--slide-width) * var(--slide-scale));
+    height: calc(var(--slide-height) * var(--slide-scale));
+
+    position: absolute;
+    top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
+    left: calc((100vw - var(--slide-width) * var(--slide-scale)) / 2);
 }
