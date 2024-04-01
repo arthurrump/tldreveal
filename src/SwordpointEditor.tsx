@@ -17,6 +17,17 @@ import React, { Fragment, useEffect, useState } from "react";
 
 import "./SwordpointEditor.css"
 
+// TODO:
+// - Switch page on slide change
+// - Clean up surrounding UI
+//   - See the Custom UI example https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/custom-ui/CustomUiExample.tsx
+//   - and the exploded version https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/exploded/ExplodedExample.tsx
+// - Restrict Canvas to the slide and handle scaling
+//   - https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/inset-canvas/InsetCanvasExample.tsx
+// - Persistence (temporary and saved file)
+// - Hide all when in overview or paused
+// - Copy full Canvas as SVG to easily paste in the source
+
 interface SlideIndex {
     indexh: number
     indexv: number
@@ -36,13 +47,11 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const showBackground = false;
 
     function startEditor() {
-        console.log("Starting editor")
         setIsEditing(true)
         document.getElementsByClassName("swordpoint-overlay")[0].classList.remove("swordpoint-inactive")
     }
 
     function onTldrawMount(editor: Editor) {
-        console.log("Mounted tldraw, setting editor to", editor)
         setEditor(editor)
         editor.setCurrentTool("draw")
         editor.updateInstanceState({ isDebugMode: false })
@@ -54,8 +63,7 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         }
     }
 
-    function stopEditor(state) {
-        console.log("Stopping editor")
+    function stopEditor(state = { isEditing, editor }) {
         if (!state.editor) {
             console.warn("Stopping editor, but no editor found!")
         } else {
@@ -67,8 +75,7 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         document.getElementsByClassName("swordpoint-overlay")[0].classList.add("swordpoint-inactive")
     }
 
-    const handleKeydown = (state) => (event: KeyboardEvent) => {
-        console.log("keydown:", event.key, "state:", state)
+    const handleKeydown = (state = { isEditing, editor }) => (event: KeyboardEvent) => {
         if (state.isEditing && event.key === "Escape") {
             stopEditor(state)
             event.stopImmediatePropagation()
@@ -80,7 +87,6 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
 
     useEffect(() => {
         function handleResize(event) {
-            console.log("Presentation scaled:", event.scale)
             setPresentationScale(event.scale)
         }
         reveal.on("resize", handleResize)
@@ -93,7 +99,6 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         const state = { isEditing, editor }
         const handleKeydown_ = handleKeydown(state)
 
-        console.log("Update event handlers.", "state:", state)
         window.addEventListener("keydown", handleKeydown_, true)
         return () => {
             window.removeEventListener("keydown", handleKeydown_, true)
