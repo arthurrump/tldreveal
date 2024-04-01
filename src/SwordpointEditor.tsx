@@ -5,9 +5,7 @@ import {
     TLRecord,
     TLPageId,
     Tldraw,
-    TldrawImage,
-    react,
-    useEditor
+    TldrawImage
 } from "tldraw"
 import "tldraw/tldraw.css"
 
@@ -18,6 +16,7 @@ import React, { useEffect, useState } from "react";
 import "./SwordpointEditor.css"
 
 // TODO:
+// - Fix issue where slide contents are lost on navigating
 // - Persistence (temporary and saved file)
 // - Hide while transitioning
 // - Copy full Canvas as SVG to easily paste in the source
@@ -128,6 +127,8 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     
     useEffect(() => {
         reveal.on("ready", handleReady)
+        // beforeslidechange
+        // slidetransitionend
         reveal.on("slidechanged", handleSlidechanged)
         reveal.on("resize", handleResize)
         reveal.on("overviewshown", handleOverviewshown)
