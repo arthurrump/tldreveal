@@ -13,14 +13,11 @@ import "tldraw/tldraw.css"
 
 import { Api as RevealApi } from "reveal.js"
 
-import React, { Fragment, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import "./SwordpointEditor.css"
 
 // TODO:
-// - Clean up surrounding UI
-//   - See the Custom UI example https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/custom-ui/CustomUiExample.tsx
-//   - and the exploded version https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/exploded/ExplodedExample.tsx
 // - Restrict Canvas to the slide and handle scaling
 //   - https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/inset-canvas/InsetCanvasExample.tsx
 // - Persistence (temporary and saved file)
@@ -139,9 +136,27 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         if (isEditing) {
             return (
                 <Tldraw
+                    forceMobile
                     snapshot={snapshot}
                     onMount={onTldrawMount}
-                >
+                    components={{
+                        MenuPanel: null
+                    }}
+                    overrides={{
+                        tools(editor, tools) {
+                            // Remove the keyboard shortcut for the hand tool
+                            tools.hand.kbd = undefined
+                            return tools
+                        },
+                        toolbar(editor, toolbar) {
+                            // Remove the hand tool from the toolbar
+                            const handIndex = toolbar.findIndex(t => t.id === "hand")
+                            if (handIndex !== -1)
+                                toolbar.splice(handIndex, 1)
+                            return toolbar
+                        }
+                    }}
+                    >
                     <ConstrainCamera />
                 </Tldraw>
             )
