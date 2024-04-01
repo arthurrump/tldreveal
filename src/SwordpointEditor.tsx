@@ -19,9 +19,10 @@ import "./SwordpointEditor.css"
 
 // TODO:
 // - Persistence (temporary and saved file)
-// - Hide all when in overview or paused
 // - Hide while transitioning
 // - Copy full Canvas as SVG to easily paste in the source
+// - Store the state when hiding (now in-progress drawing is lost)
+// - Keep the active drawing color etc. when transitioning in/out editing
 // - Fix the small jump when switching to SVG
 
 type SlideIndex = `${number}.${number}`
@@ -116,6 +117,14 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     function handleOverviewhidden(_event) {
         setIsShown(true)
     }
+
+    function handlePaused(_event) {
+        setIsShown(false)
+    }
+
+    function handleResumed(_event) {
+        setIsShown(true)
+    }
     
     useEffect(() => {
         reveal.on("ready", handleReady)
@@ -123,12 +132,16 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         reveal.on("resize", handleResize)
         reveal.on("overviewshown", handleOverviewshown)
         reveal.on("overviewhidden", handleOverviewhidden)
+        reveal.on("paused", handlePaused)
+        reveal.on("resumed", handleResumed)
         return () => {
             reveal.off("ready", handleReady)
             reveal.off("slidechanged", handleSlidechanged)
             reveal.off("resize", handleResize)
             reveal.off("overviewshown", handleOverviewshown)
             reveal.off("overviewhidden", handleOverviewhidden)
+            reveal.off("paused", handlePaused)
+            reveal.off("resumed", handleResumed)
         }
     }, [])
 
