@@ -1,7 +1,7 @@
 import { Plugin as RevealPlugin, Api as RevealApi } from "reveal.js"
 import React from "react"
 import ReactClient from "react-dom/client"
-import { Editor } from "./Editor"
+import { SwordpointEditor } from "./SwordpointEditor"
 
 function init(reveal: RevealApi) {
 
@@ -10,10 +10,11 @@ function init(reveal: RevealApi) {
     function onRevealReady(_event) {
         const swordpointElement = document.createElement("div")
         swordpointElement.classList.add("swordpoint-overlay")
+        swordpointElement.classList.add("swordpoint-inactive")
         swordpointElement.setAttribute("data-prevent-swipe", "true")
         reveal.getRevealElement()?.appendChild(swordpointElement)
         const reactRoot = ReactClient.createRoot(swordpointElement)
-        reactRoot.render(React.createElement(Editor, { reveal }));
+        reactRoot.render(React.createElement(SwordpointEditor, { reveal }));
     }
 }
 
