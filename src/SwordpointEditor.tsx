@@ -18,7 +18,6 @@ import React, { Fragment, useEffect, useState } from "react";
 import "./SwordpointEditor.css"
 
 // TODO:
-// - Switch page on slide change
 // - Clean up surrounding UI
 //   - See the Custom UI example https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/custom-ui/CustomUiExample.tsx
 //   - and the exploded version https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/exploded/ExplodedExample.tsx
@@ -28,23 +27,18 @@ import "./SwordpointEditor.css"
 // - Hide all when in overview or paused
 // - Copy full Canvas as SVG to easily paste in the source
 
-interface SlideIndex {
-    indexh: number
-    indexv: number
-}
+type SlideIndex = `${number}.${number}`
 
 export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
-	const [currentPageId, setCurrentPageId] = useState<TLPageId | undefined>()
-	const [viewportPageBounds, setViewportPageBounds] = useState(new Box(0, 0, 600, 400))
+    const [slidePageMap, setSlidePageMap] = useState<{ [Slide: SlideIndex]: TLPageId }>({})
 
+    const [isShown, setIsShown] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
 
+    const [currentSlide, setCurrentSlide] = useState<SlideIndex>("0.0")
     const [presentationScale, setPresentationScale] = useState<number>(1)
-
-	const format = "svg"
-    const showBackground = false;
 
     function startEditor() {
         setIsEditing(true)
@@ -55,23 +49,17 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         setEditor(editor)
         editor.setCurrentTool("draw")
         editor.updateInstanceState({ isDebugMode: false })
-        if (currentPageId) {
-            editor.setCurrentPage(currentPageId)
-        }
-        if (viewportPageBounds) {
-            editor.zoomToBounds(viewportPageBounds, { inset: 0 })
-        }
+        syncEditorPage({ editor, slidePageMap, currentSlide })
     }
 
     function stopEditor(state = { isEditing, editor }) {
         if (!state.editor) {
             console.warn("Stopping editor, but no editor found!")
         } else {
-            setViewportPageBounds(state.editor.getViewportPageBounds())
-            setCurrentPageId(state.editor.getCurrentPageId())
             setSnapshot(state.editor.store.getSnapshot())
         }
         setIsEditing(false)
+        setEditor(undefined)
         document.getElementsByClassName("swordpoint-overlay")[0].classList.add("swordpoint-inactive")
     }
 
@@ -86,16 +74,6 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     }
 
     useEffect(() => {
-        function handleResize(event) {
-            setPresentationScale(event.scale)
-        }
-        reveal.on("resize", handleResize)
-        return () => {
-            reveal.off("resize", handleResize)
-        }
-    }, [])
-
-    useEffect(() => {
         const state = { isEditing, editor }
         const handleKeydown_ = handleKeydown(state)
 
@@ -103,50 +81,85 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         return () => {
             window.removeEventListener("keydown", handleKeydown_, true)
         }
-
-        // reveal.on("slidechanged", (event: any) => {
-        //     const name = `${event.indexh}.${event.indexv}`
-        //     let page = editor.getPages().find(p => p.name === name)
-        //     if (page === undefined) {
-        //         editor.createPage({ name })
-        //         page = editor.getPages().find(p => p.name === wname)!
-        //     }
-        //     editor.setCurrentPage(page)
-        // })
-
-        // reveal.on("overviewshown", event => {
-        //     // Hide drawings
-        //     stopEditor()
-        // })
-
-        // reveal.on("overviewhidden", event => {
-        //     // Show drawings again
-        // })
-
-        // TODO: handle view
     }, [ isEditing, editor ])
 
-    return (
-        <Fragment>
-            {isEditing ? (
+    function handleReady(event) {
+        setCurrentSlide(`${event.indexh}.${event.indexv}`)
+    }
+    
+    function handleSlidechanged(event) {
+        setCurrentSlide(`${event.indexh}.${event.indexv}`)
+    }
+    
+    function handleResize(event) {
+        setPresentationScale(event.scale)
+    }
+    
+    function handleOverviewshown(_event) {
+        setIsShown(false)
+    }
+    
+    function handleOverviewhidden(_event) {
+        setIsShown(true)
+    }
+    
+    useEffect(() => {
+        reveal.on("ready", handleReady)
+        reveal.on("slidechanged", handleSlidechanged)
+        reveal.on("resize", handleResize)
+        reveal.on("overviewshown", handleOverviewshown)
+        reveal.on("overviewhidden", handleOverviewhidden)
+        return () => {
+            reveal.off("ready", handleReady)
+            reveal.off("slidechanged", handleSlidechanged)
+            reveal.off("resize", handleResize)
+            reveal.off("overviewshown", handleOverviewshown)
+            reveal.off("overviewhidden", handleOverviewhidden)
+        }
+    }, [])
+
+    function syncEditorPage(state = { editor, slidePageMap, currentSlide }) {
+        if (state.editor) {
+            let pageId = state.slidePageMap[currentSlide]
+            if (pageId === undefined) {
+                state.editor.createPage({ name: currentSlide })
+                const pages = state.editor.getPages()
+                pageId = pages[pages.length - 1].id
+                setSlidePageMap({ ...state.slidePageMap, [currentSlide]: pageId })
+            }
+            state.editor.setCurrentPage(pageId)
+        }
+    }
+
+    useEffect(() => {
+        syncEditorPage({ editor, slidePageMap, currentSlide })
+    }, [ editor, slidePageMap, currentSlide ])
+
+    if (isShown) {
+        if (isEditing) {
+            return (
                 <Tldraw
                     snapshot={snapshot}
                     onMount={onTldrawMount}
                 >
                     <ConstrainCamera />
                 </Tldraw>
-            ) : (
+            )
+        } else if (slidePageMap[currentSlide] !== undefined) {
+            return (
                 <TldrawImage
                     snapshot={snapshot}
-                    pageId={currentPageId}
-                    background={showBackground}
-                    bounds={viewportPageBounds}
+                    pageId={slidePageMap[currentSlide]}
+                    background={false}
+                    // bounds={viewportPageBounds}
                     padding={0}
                     scale={presentationScale}
-                    format={format} />
-            )}
-        </Fragment>
-    )
+                    format="svg" />
+            )
+        }
+    } else {
+        return null
+    }
 }
 
 function ConstrainCamera() {
