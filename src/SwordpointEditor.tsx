@@ -18,13 +18,21 @@ import React, { useEffect, useState } from "react";
 import "./SwordpointEditor.css"
 
 // TODO:
-// - Restrict Canvas to the slide and handle scaling
-//   - https://github.dev/tldraw/tldraw/blob/main/apps/examples/src/examples/inset-canvas/InsetCanvasExample.tsx
 // - Persistence (temporary and saved file)
 // - Hide all when in overview or paused
+// - Hide while transitioning
 // - Copy full Canvas as SVG to easily paste in the source
+// - Fix the small jump when switching to SVG
 
 type SlideIndex = `${number}.${number}`
+
+function makeInt(numOrStr: number | string) : number {
+    if (typeof numOrStr === "string") {
+        return parseInt(numOrStr)
+    } else {
+        return numOrStr
+    }
+}
 
 export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const [editor, setEditor] = useState<Editor | undefined>()
@@ -37,6 +45,10 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const [currentSlide, setCurrentSlide] = useState<SlideIndex>("0.0")
     const [presentationScale, setPresentationScale] = useState<number>(1)
 
+    const slideWidth = makeInt(reveal.getConfig().width)
+    const slideHeight = makeInt(reveal.getConfig().height)
+    const bounds = new Box(slideWidth / 2, slideHeight / 2, slideWidth, slideHeight)
+
     function startEditor() {
         setIsEditing(true)
         document.getElementsByClassName("swordpoint-overlay")[0].classList.remove("swordpoint-inactive")
@@ -45,7 +57,12 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
         editor.setCurrentTool("draw")
-        editor.updateInstanceState({ isDebugMode: false })
+        editor.updateInstanceState({ canMoveCamera: true })
+        editor.zoomToBounds(bounds, { inset: 0 })
+        editor.updateInstanceState({ 
+            isDebugMode: false,
+            canMoveCamera: false
+        })
         syncEditorPage({ editor, slidePageMap, currentSlide })
     }
 
@@ -132,6 +149,14 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         syncEditorPage({ editor, slidePageMap, currentSlide })
     }, [ editor, slidePageMap, currentSlide ])
 
+    useEffect(() => {
+        if (editor) {
+            editor.updateInstanceState({ canMoveCamera: true })
+            editor.zoomToBounds(bounds, { inset: 0 })
+            editor.updateInstanceState({ canMoveCamera: false })
+        }
+    }, [ editor, presentationScale ])
+
     if (isShown) {
         if (isEditing) {
             return (
@@ -157,7 +182,6 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
                         }
                     }}
                     >
-                    <ConstrainCamera />
                 </Tldraw>
             )
         } else if (slidePageMap[currentSlide] !== undefined) {
@@ -166,7 +190,7 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
                     snapshot={snapshot}
                     pageId={slidePageMap[currentSlide]}
                     background={false}
-                    // bounds={viewportPageBounds}
+                    bounds={bounds}
                     padding={0}
                     scale={presentationScale}
                     format="svg" />
@@ -175,63 +199,4 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     } else {
         return null
     }
-}
-
-function ConstrainCamera() {
-    const editor = useEditor()
-
-    useEffect(() => {
-        function constrainCamera(camera: { x: number; y: number; z: number }): {
-            x: number
-            y: number
-            z: number
-        } {
-            const viewportBounds = editor.getViewportScreenBounds()
-
-            const usableViewport = new Box(
-                0,
-                0,
-                viewportBounds.w,
-                viewportBounds.h
-            )
-
-            return {
-                x: usableViewport.midX,
-                y: usableViewport.midY,
-                z: 1,
-            }
-        }
-
-        const removeOnChange = editor.sideEffects.registerBeforeChangeHandler(
-            'camera',
-            (_prev, next) => {
-                const constrained = constrainCamera(next)
-                if (constrained.x === next.x && constrained.y === next.y && constrained.z === next.z)
-                    return next
-                return { ...next, ...constrained }
-            }
-        )
-
-        const removeReaction = react('update camera when viewport/shape changes', () => {
-            const original = editor.getCamera()
-            const constrained = constrainCamera(original)
-            if (
-                original.x === constrained.x &&
-                original.y === constrained.y &&
-                original.z === constrained.z
-            ) {
-                return
-            }
-
-            // this needs to be in a microtask for some reason, but idk why
-            queueMicrotask(() => editor.setCamera(constrained))
-        })
-
-        return () => {
-            removeOnChange()
-            removeReaction()
-        }
-    }, [editor])
-
-    return null
 }

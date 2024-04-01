@@ -17,10 +17,11 @@
 }
 
 .swordpoint-overlay .tl-canvas, .swordpoint-overlay .tl-container > img {
-    width: calc(var(--slide-width) * var(--slide-scale));
-    height: calc(var(--slide-height) * var(--slide-scale));
+    width: calc(var(--slide-width) * var(--slide-scale)) !important;
+    height: calc(var(--slide-height) * var(--slide-scale)) !important;
 
     position: absolute;
     top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
     left: calc((100vw - var(--slide-width) * var(--slide-scale)) / 2);
+    margin: 0;
 }
