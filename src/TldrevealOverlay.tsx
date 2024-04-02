@@ -1,3 +1,7 @@
+import React, { useEffect, useState } from "react";
+
+import { Api as RevealApi } from "reveal.js"
+
 import { 
     Box,
     Editor,
@@ -7,13 +11,8 @@ import {
     Tldraw,
     TldrawImage
 } from "tldraw"
+
 import "tldraw/tldraw.css"
-
-import { Api as RevealApi } from "reveal.js"
-
-import React, { useEffect, useState } from "react";
-
-import "./SwordpointEditor.css"
 
 // TODO:
 // - Persistence (temporary and saved file)
@@ -33,7 +32,7 @@ function makeInt(numOrStr: number | string) : number {
     }
 }
 
-export function SwordpointEditor({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
+export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
     const [slidePageMap, setSlidePageMap] = useState<{ [Slide: SlideIndex]: TLPageId }>({})
@@ -84,11 +83,11 @@ export function SwordpointEditor({ reveal, container }: { reveal: RevealApi, con
 
     useEffect(() => {
         if (isShown && isEditing) {
-            container.classList.remove("swordpoint-inactive")
+            container.classList.remove("tldreveal-inactive")
             container.setAttribute("data-prevent-swipe", "true")
         } else {
-            if (!container.classList.contains("swordpoint-inactive")) {
-                container.classList.add("swordpoint-inactive")
+            if (!container.classList.contains("tldreveal-inactive")) {
+                container.classList.add("tldreveal-inactive")
             }
             if (container.hasAttribute("data-prevent-swipe")) {
                 container.removeAttribute("data-prevent-swipe")

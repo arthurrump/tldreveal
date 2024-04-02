@@ -1,4 +1,4 @@
- .swordpoint-overlay {
+ .tldreveal {
     position: absolute;
     top: 0;
     left: 0;
@@ -8,15 +8,15 @@
     background: rgba(255, 255, 255, 0);
 }
 
-.swordpoint-inactive {
+.tldreveal-inactive {
     pointer-events: none;
 }
 
-.swordpoint-overlay .tl-container {
+.tldreveal .tl-container {
     --color-background: rgba(255, 255, 255, 0);
 }
 
-.swordpoint-overlay .tl-canvas, .swordpoint-overlay .tl-container > img {
+.tldreveal .tl-canvas, .tldreveal .tl-container > img {
     width: calc(var(--slide-width) * var(--slide-scale)) !important;
     height: calc(var(--slide-height) * var(--slide-scale)) !important;
 

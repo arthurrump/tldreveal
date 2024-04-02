@@ -1,5 +1,5 @@
 {
-  "name": "swordpoint",
+  "name": "tldreveal",
   "scripts": {
     "demo": "esbuild demo/index.ts --bundle --sourcemap --loader:.woff=file --loader:.eot=file --loader:.ttf=file '--define:process.env.NODE_ENV=\"dev\"' '--define:process.env.IS_PREACT=\"false\"' --watch --servedir=demo --outfile=demo/index.js"
   },
