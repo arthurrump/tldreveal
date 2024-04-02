@@ -16,7 +16,6 @@ import React, { useEffect, useState } from "react";
 import "./SwordpointEditor.css"
 
 // TODO:
-// - Fix issue where slide contents are lost on navigating
 // - Persistence (temporary and saved file)
 // - Hide while transitioning
 // - Copy full Canvas as SVG to easily paste in the source
@@ -57,13 +56,8 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
         editor.setCurrentTool("draw")
-        editor.updateInstanceState({ canMoveCamera: true })
-        editor.zoomToBounds(bounds, { inset: 0 })
-        editor.updateInstanceState({ 
-            isDebugMode: false,
-            canMoveCamera: false
-        })
-        syncEditorPage({ editor, slidePageMap, currentSlide })
+        editor.updateInstanceState({ isDebugMode: false })
+        syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
     }
 
     function stopEditor(state = { isEditing, editor }) {
@@ -146,8 +140,9 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         }
     }, [])
 
-    function syncEditorPage(state = { editor, slidePageMap, currentSlide }) {
+    function syncEditor(state = { editor, slidePageMap, currentSlide, presentationScale }) {
         if (state.editor) {
+            // Find the correct pageId, or create it if there isn't one
             let pageId = state.slidePageMap[currentSlide]
             if (pageId === undefined) {
                 state.editor.createPage({ name: currentSlide })
@@ -155,21 +150,22 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
                 pageId = pages[pages.length - 1].id
                 setSlidePageMap({ ...state.slidePageMap, [currentSlide]: pageId })
             }
-            state.editor.setCurrentPage(pageId)
+
+            // Navigate to the correct page if we're not there yet
+            if (state.editor.getCurrentPageId() !== pageId) {
+                state.editor.setCurrentPage(pageId)
+            }
+
+            // Set the correct zoom and prevent further movement
+            state.editor.updateInstanceState({ canMoveCamera: true })
+            state.editor.zoomToBounds(bounds, { inset: 0 })
+            state.editor.updateInstanceState({ canMoveCamera: false })
         }
     }
 
     useEffect(() => {
-        syncEditorPage({ editor, slidePageMap, currentSlide })
-    }, [ editor, slidePageMap, currentSlide ])
-
-    useEffect(() => {
-        if (editor) {
-            editor.updateInstanceState({ canMoveCamera: true })
-            editor.zoomToBounds(bounds, { inset: 0 })
-            editor.updateInstanceState({ canMoveCamera: false })
-        }
-    }, [ editor, presentationScale ])
+        syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
+    }, [ editor, slidePageMap, currentSlide, presentationScale ])
 
     if (isShown) {
         if (isEditing) {
