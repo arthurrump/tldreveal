@@ -19,7 +19,6 @@ import "./SwordpointEditor.css"
 // - Persistence (temporary and saved file)
 // - Hide while transitioning
 // - Copy full Canvas as SVG to easily paste in the source
-// - Store the state when hiding (now in-progress drawing is lost)
 // - Keep the active drawing color etc. when transitioning in/out editing
 // - Fix the small jump when switching to SVG
 
@@ -48,6 +47,15 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const slideHeight = makeInt(reveal.getConfig().height)
     const bounds = new Box(slideWidth / 2, slideHeight / 2, slideWidth, slideHeight)
 
+    function show() {
+        setIsShown(true)
+    }
+
+    function hide(state = { editor }) {
+        saveEditor(state)
+        setIsShown(false)
+    }
+
     function startEditor() {
         setIsEditing(true)
         document.getElementsByClassName("swordpoint-overlay")[0].classList.remove("swordpoint-inactive")
@@ -60,12 +68,16 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
     }
 
-    function stopEditor(state = { isEditing, editor }) {
+    function saveEditor(state = { editor }) {
         if (!state.editor) {
-            console.warn("Stopping editor, but no editor found!")
+            console.warn("Trying to save editor, but no editor found!")
         } else {
             setSnapshot(state.editor.store.getSnapshot())
         }
+    }
+
+    function stopEditor(state = { editor }) {
+        saveEditor(state)
         setIsEditing(false)
         setEditor(undefined)
         document.getElementsByClassName("swordpoint-overlay")[0].classList.add("swordpoint-inactive")
@@ -103,20 +115,20 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         setPresentationScale(event.scale)
     }
     
-    function handleOverviewshown(_event) {
-        setIsShown(false)
+    const handleOverviewshown = state => _event => {
+        hide(state)
     }
     
     function handleOverviewhidden(_event) {
-        setIsShown(true)
+        show()
     }
 
-    function handlePaused(_event) {
-        setIsShown(false)
+    const handlePaused = state => _event => {
+        hide(state)
     }
 
     function handleResumed(_event) {
-        setIsShown(true)
+        show()
     }
     
     useEffect(() => {
@@ -125,20 +137,28 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         // slidetransitionend
         reveal.on("slidechanged", handleSlidechanged)
         reveal.on("resize", handleResize)
-        reveal.on("overviewshown", handleOverviewshown)
         reveal.on("overviewhidden", handleOverviewhidden)
-        reveal.on("paused", handlePaused)
         reveal.on("resumed", handleResumed)
         return () => {
             reveal.off("ready", handleReady)
             reveal.off("slidechanged", handleSlidechanged)
             reveal.off("resize", handleResize)
-            reveal.off("overviewshown", handleOverviewshown)
             reveal.off("overviewhidden", handleOverviewhidden)
-            reveal.off("paused", handlePaused)
             reveal.off("resumed", handleResumed)
         }
     }, [])
+
+    useEffect(() => {
+        const handleOverviewshown_ = handleOverviewshown({ editor })
+        const handlePaused_ = handlePaused({ editor })
+
+        reveal.on("overviewshown", handleOverviewshown_)
+        reveal.on("paused", handlePaused_)
+        return () => {
+            reveal.off("overviewshown", handleOverviewshown_)
+            reveal.off("paused", handlePaused_)        
+        }
+    }, [ editor ])
 
     function syncEditor(state = { editor, slidePageMap, currentSlide, presentationScale }) {
         if (state.editor) {
