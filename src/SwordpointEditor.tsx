@@ -21,6 +21,7 @@ import "./SwordpointEditor.css"
 // - Copy full Canvas as SVG to easily paste in the source
 // - Keep the active drawing color etc. when transitioning in/out editing
 // - Fix the small jump when switching to SVG
+// - Fix the overlay in scroll mode
 
 type SlideIndex = `${number}.${number}`
 
@@ -32,7 +33,7 @@ function makeInt(numOrStr: number | string) : number {
     }
 }
 
-export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
+export function SwordpointEditor({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
     const [slidePageMap, setSlidePageMap] = useState<{ [Slide: SlideIndex]: TLPageId }>({})
@@ -47,6 +48,14 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
     const slideHeight = makeInt(reveal.getConfig().height)
     const bounds = new Box(slideWidth / 2, slideHeight / 2, slideWidth, slideHeight)
 
+    function saveEditor(state = { editor }) {
+        if (!state.editor) {
+            console.warn("Trying to save editor, but no editor found!")
+        } else {
+            setSnapshot(state.editor.store.getSnapshot())
+        }
+    }
+
     function show() {
         setIsShown(true)
     }
@@ -58,7 +67,6 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
 
     function startEditor() {
         setIsEditing(true)
-        document.getElementsByClassName("swordpoint-overlay")[0].classList.remove("swordpoint-inactive")
     }
 
     function onTldrawMount(editor: Editor) {
@@ -68,20 +76,25 @@ export function SwordpointEditor({ reveal }: { reveal: RevealApi }) {
         syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
     }
 
-    function saveEditor(state = { editor }) {
-        if (!state.editor) {
-            console.warn("Trying to save editor, but no editor found!")
-        } else {
-            setSnapshot(state.editor.store.getSnapshot())
-        }
-    }
-
     function stopEditor(state = { editor }) {
         saveEditor(state)
         setIsEditing(false)
         setEditor(undefined)
-        document.getElementsByClassName("swordpoint-overlay")[0].classList.add("swordpoint-inactive")
     }
+
+    useEffect(() => {
+        if (isShown && isEditing) {
+            container.classList.remove("swordpoint-inactive")
+            container.setAttribute("data-prevent-swipe", "true")
+        } else {
+            if (!container.classList.contains("swordpoint-inactive")) {
+                container.classList.add("swordpoint-inactive")
+            }
+            if (container.hasAttribute("data-prevent-swipe")) {
+                container.removeAttribute("data-prevent-swipe")
+            }
+        }
+    }, [ isShown, isEditing ])
 
     const handleKeydown = (state = { isEditing, editor }) => (event: KeyboardEvent) => {
         if (state.isEditing && event.key === "Escape") {

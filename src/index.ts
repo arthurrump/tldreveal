@@ -8,13 +8,14 @@ function init(reveal: RevealApi) {
     reveal.on("ready", onRevealReady)
 
     function onRevealReady(_event) {
-        const swordpointElement = document.createElement("div")
-        swordpointElement.classList.add("swordpoint-overlay")
-        swordpointElement.classList.add("swordpoint-inactive")
-        swordpointElement.setAttribute("data-prevent-swipe", "true")
-        reveal.getRevealElement()?.appendChild(swordpointElement)
-        const reactRoot = ReactClient.createRoot(swordpointElement)
-        reactRoot.render(React.createElement(SwordpointEditor, { reveal }));
+        // Create container element overlaid on the slides
+        const container = document.createElement("div")
+        container.classList.add("swordpoint-overlay", "swordpoint-inactive")
+        reveal.getRevealElement()!.appendChild(container)
+
+        // Start Swordpoing inside the container
+        const reactRoot = ReactClient.createRoot(container)
+        reactRoot.render(React.createElement(SwordpointEditor, { reveal, container }));
     }
 }
 
