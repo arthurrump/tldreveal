@@ -107,7 +107,10 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
         editor.setCurrentTool("draw")
-        editor.updateInstanceState({ isDebugMode: false })
+        editor.updateInstanceState({ 
+            isDebugMode: false,
+            exportBackground: false
+        })
         syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
     }
 
