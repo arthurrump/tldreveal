@@ -45,7 +45,7 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
 
     const slideWidth = makeInt(reveal.getConfig().width)
     const slideHeight = makeInt(reveal.getConfig().height)
-    const bounds = new Box(slideWidth / 2, slideHeight / 2, slideWidth, slideHeight)
+    const bounds = new Box(0, 0, slideWidth, slideHeight)
 
     function saveEditor(state = { editor }) {
         if (!state.editor) {
