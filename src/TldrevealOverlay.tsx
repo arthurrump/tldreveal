@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 
 import { Api as RevealApi } from "reveal.js"
 
@@ -9,7 +9,18 @@ import {
     TLRecord,
     TLPageId,
     Tldraw,
-    TldrawImage
+    TldrawImage,
+    DefaultQuickActions,
+    DefaultQuickActionsContent,
+    TldrawUiMenuItem,
+    AlignMenuItems,
+    DistributeMenuItems,
+    EditLinkMenuItem,
+    GroupOrUngroupMenuItem,
+    ReorderMenuItems,
+    RotateCWMenuItem,
+    StackMenuItems,
+    DefaultActionsMenu
 } from "tldraw"
 
 import "tldraw/tldraw.css"
@@ -30,6 +41,29 @@ function makeInt(numOrStr: number | string) : number {
     } else {
         return numOrStr
     }
+}
+
+function CustomQuickActions({ onClose }) {
+    return (
+        <DefaultQuickActions>
+            <TldrawUiMenuItem id="close" icon="cross" onSelect={() => onClose() } />
+            <DefaultQuickActionsContent />
+        </DefaultQuickActions>
+    )
+}
+
+function CustomActionsMenu() {
+    return (
+        <DefaultActionsMenu>
+            <AlignMenuItems />
+            <DistributeMenuItems />
+            <StackMenuItems />
+            <ReorderMenuItems />
+            <RotateCWMenuItem />
+            <EditLinkMenuItem />
+            <GroupOrUngroupMenuItem />
+        </DefaultActionsMenu>
+    )
 }
 
 export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
@@ -201,15 +235,17 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
         syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
     }, [ editor, slidePageMap, currentSlide, presentationScale ])
 
-    if (isShown) {
-        if (isEditing) {
-            return (
+    return (
+        <Fragment>
+            { (isShown && isEditing) ?
                 <Tldraw
                     forceMobile
                     snapshot={snapshot}
                     onMount={onTldrawMount}
                     components={{
-                        MenuPanel: null
+                        MenuPanel: null,
+                        ActionsMenu: CustomActionsMenu,
+                        QuickActions: () => <CustomQuickActions onClose={stopEditor} />
                     }}
                     overrides={{
                         tools(editor, tools) {
@@ -223,13 +259,22 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
                             if (handIndex !== -1)
                                 toolbar.splice(handIndex, 1)
                             return toolbar
+                        },
+                        // Remove actions related to zooming
+                        actions(editor, actions) {
+                            delete actions["select-zoom-tool"]
+                            delete actions["zoom-in"]
+                            delete actions["zoom-out"]
+                            delete actions["zoom-to-100"]
+                            delete actions["zoom-to-fit"]
+                            delete actions["zoom-to-selection"]
+                            delete actions["back-to-content"]
+                            return actions
                         }
                     }}
                     >
                 </Tldraw>
-            )
-        } else if (slidePageMap[currentSlide] !== undefined) {
-            return (
+            : (isShown && slidePageMap[currentSlide] !== undefined) &&
                 <TldrawImage
                     snapshot={snapshot}
                     pageId={slidePageMap[currentSlide]}
@@ -238,9 +283,7 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
                     padding={0}
                     scale={presentationScale}
                     format="svg" />
-            )
-        }
-    } else {
-        return null
-    }
+            }
+        </Fragment>
+    )
 }
