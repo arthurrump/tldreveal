@@ -60,7 +60,9 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     }
 
     function hide(state = { editor }) {
-        saveEditor(state)
+        if (editor !== undefined) {
+            saveEditor(state)
+        }
         setIsShown(false)
     }
 
