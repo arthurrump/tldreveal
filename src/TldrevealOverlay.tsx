@@ -28,10 +28,19 @@ import "tldraw/tldraw.css"
 
 // TODO:
 // - Persistence (temporary and saved file)
+//   - persistenceKey doesn't work, because we override snapshot
+//   - Only persist to localStorage if the deck has an id
+//   - https://tldraw.dev/examples/data/assets/local-storage
+//   - What the .com version does:
+//     - https://github.dev/tldraw/tldraw/blob/1ba9cbfa2afab156da762dcc21425bc03936764f/apps/dotcom/src/utils/useFileSystem.tsx
+//     - serializeTldrawJsonBlob(editor.store)
+//     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
+//       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
+// - Use `data-id` or `id` of slide (if available), to preserve drawings when order changes
+//   - How to handle un-id-ed slides? In a vertical stack use the stack id + index?
 // - Hide while transitioning (or better: animate the canvas with the slide)
 // - Fix the small jump when switching to SVG
 // - Fix the overlay in scroll mode
-// - Use `data-id` or `id` of slide (if available), to preserve drawings when order changes
 
 type SlideIndex = `${number}.${number}`
 
@@ -81,6 +90,13 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     const slideWidth = makeInt(reveal.getConfig().width)
     const slideHeight = makeInt(reveal.getConfig().height)
     const bounds = new Box(0, 0, slideWidth, slideHeight)
+
+    function tryGetId(element: HTMLElement) : string | undefined {
+        return element.getAttribute("data-id") || element.id || undefined
+    }
+
+    const deckId : string | undefined = 
+        tryGetId(reveal.getSlidesElement()) || tryGetId(reveal.getRevealElement())
 
     function saveEditor(state = { editor }) {
         if (!state.editor) {
