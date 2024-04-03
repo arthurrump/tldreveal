@@ -3,6 +3,7 @@
         "target": "ES5",
         "jsx": "react",
         "esModuleInterop": true,
+        "downlevelIteration": true,
         "lib": [ "DOM", "ES2015" ]
     }
 }

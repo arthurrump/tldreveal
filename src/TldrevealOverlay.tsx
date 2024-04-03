@@ -20,18 +20,18 @@ import {
     ReorderMenuItems,
     RotateCWMenuItem,
     StackMenuItems,
-    DefaultActionsMenu
+    DefaultActionsMenu,
+    ReadonlySharedStyleMap
 } from "tldraw"
 
 import "tldraw/tldraw.css"
 
 // TODO:
 // - Persistence (temporary and saved file)
-// - Hide while transitioning
-// - Copy full Canvas as SVG to easily paste in the source
-// - Keep the active drawing color etc. when transitioning in/out editing
+// - Hide while transitioning (or better: animate the canvas with the slide)
 // - Fix the small jump when switching to SVG
 // - Fix the overlay in scroll mode
+// - Use `data-id` or `id` of slide (if available), to preserve drawings when order changes
 
 type SlideIndex = `${number}.${number}`
 
@@ -69,6 +69,7 @@ function CustomActionsMenu() {
 export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
+    const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
     const [slidePageMap, setSlidePageMap] = useState<{ [Slide: SlideIndex]: TLPageId }>({})
 
     const [isShown, setIsShown] = useState(true)
@@ -86,6 +87,7 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
             console.warn("Trying to save editor, but no editor found!")
         } else {
             setSnapshot(state.editor.store.getSnapshot())
+            setSharedStyles(state.editor.getSharedStyles())
         }
     }
 
@@ -107,6 +109,13 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
         editor.setCurrentTool("draw")
+        if (sharedStyles !== undefined) {
+            for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
+                if (sharedStyle.type === "shared") {
+                    editor.setStyleForNextShapes(styleProp, sharedStyle.value)
+                }
+            }
+        }
         editor.updateInstanceState({ 
             isDebugMode: false,
             exportBackground: false
