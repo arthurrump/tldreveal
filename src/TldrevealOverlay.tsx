@@ -290,6 +290,20 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [])
 
+    const handleResize = (state = { editor }) => _event => {
+        syncEditorBounds(state)
+    }
+
+    useEffect(() => {
+        const state = { editor }
+        const handleResize_ = handleResize(state)
+
+        reveal.on("resize", handleResize_)
+        return () => {
+            reveal.off("resize", handleResize_)
+        }
+    }, [ editor ])
+
     useEffect(() => {
         const handleOverviewshown_ = handleOverviewshown({ editor })
         const handlePaused_ = handlePaused({ editor })
@@ -301,6 +315,15 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             reveal.off("paused", handlePaused_)        
         }
     }, [ editor ])
+
+    function syncEditorBounds(state = { editor }) {
+        if (state.editor) {
+            // Set the correct zoom and prevent further movement
+            state.editor.updateInstanceState({ canMoveCamera: true })
+            state.editor.zoomToBounds(bounds, { inset: 0 })
+            state.editor.updateInstanceState({ canMoveCamera: false })
+        }
+    }
 
     function syncEditor(state = { editor, currentSlide }) {
         if (state.editor) {
@@ -315,10 +338,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 state.editor.setCurrentPage(pageId)
             }
 
-            // Set the correct zoom and prevent further movement
-            state.editor.updateInstanceState({ canMoveCamera: true })
-            state.editor.zoomToBounds(bounds, { inset: 0 })
-            state.editor.updateInstanceState({ canMoveCamera: false })
+            // Set the bounds correctly on the new page
+            syncEditorBounds(state)
         }
     }
 
