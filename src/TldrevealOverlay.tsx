@@ -1,11 +1,10 @@
-import React, { Fragment, useEffect, useMemo, useState } from "react";
+import React, { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { Api as RevealApi } from "reveal.js"
 
 import { 
     Box,
     Editor,
-    TLPageId,
     Tldraw,
     TldrawImage,
     DefaultQuickActions,
@@ -22,6 +21,7 @@ import {
     ReadonlySharedStyleMap,
     createTLStore,
     defaultShapeUtils,
+    throttle,
     PageRecordType
 } from "tldraw"
 
@@ -38,6 +38,7 @@ import "tldraw/tldraw.css"
 //     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
 //       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
 // - Hide while transitioning (or better: animate the canvas with the slide)
+// - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
 // - Optional button to start drawing without a keyboard
 // - Quick way to clear the current slide
@@ -89,7 +90,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [editor, setEditor] = useState<Editor | undefined>()
     const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
 
-    const [isShown, setIsShown] = useState(true)
+    const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 
     const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>({ h: 0, v: 0 })
@@ -133,6 +134,39 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }
 
     const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
+
+    useLayoutEffect(() => {
+        let cleanup = () => {}
+
+        if (deckId) {
+            const storageKey = `TLDREVEAL_SNAPSHOT__${deckId}`
+
+            const storedSnapshot = localStorage.getItem(storageKey)
+            if (storedSnapshot) {
+                try {
+                    const snapshot = JSON.parse(storedSnapshot)
+                    store.loadSnapshot(snapshot)
+                } catch (error: any) {
+                    console.error("Failed to load tldreveal snapshot from local storage: ", error.message, error)
+                }
+            }
+
+            const cleanupStoreListen = store.listen(
+                throttle(() => {
+                    const snapshot = store.getSnapshot()
+                    localStorage.setItem(storageKey, JSON.stringify(snapshot))
+                }, 500)
+            )
+
+            cleanup = () => {
+                cleanupStoreListen()
+            }
+        }
+
+        setIsShown(true)
+
+        return cleanup
+    }, [ store ])
 
     function saveEditor(state = { editor }) {
         if (!state.editor) {
