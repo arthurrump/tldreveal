@@ -5,8 +5,6 @@ import { Api as RevealApi } from "reveal.js"
 import { 
     Box,
     Editor,
-    StoreSnapshot,
-    TLRecord,
     TLPageId,
     Tldraw,
     TldrawImage,
@@ -21,7 +19,9 @@ import {
     RotateCWMenuItem,
     StackMenuItems,
     DefaultActionsMenu,
-    ReadonlySharedStyleMap
+    ReadonlySharedStyleMap,
+    createTLStore,
+    defaultShapeUtils
 } from "tldraw"
 
 import "tldraw/tldraw.css"
@@ -37,6 +37,10 @@ import "tldraw/tldraw.css"
 //     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
 //       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
 // - Hide while transitioning (or better: animate the canvas with the slide)
+// - Configuration options for default styles (colour, stroke width, etc)
+// - Optional button to start drawing without a keyboard
+// - Quick way to clear the current slide
+// - Quick way to clear the entire presentation
 // - Fix the small jump when switching to SVG
 // - Fix the overlay in scroll mode
 
@@ -79,8 +83,9 @@ export interface TldrevealOverlayProps {
 }
 
 export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
+    const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
+
     const [editor, setEditor] = useState<Editor | undefined>()
-	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
     const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
     const [slidePageMap, setSlidePageMap] = useState<{ [slide: string]: TLPageId }>({})
 
@@ -133,7 +138,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         if (!state.editor) {
             console.warn("Trying to save editor, but no editor found!")
         } else {
-            setSnapshot(state.editor.store.getSnapshot())
             setSharedStyles(state.editor.getSharedStyles())
         }
     }
@@ -299,7 +303,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             { (isShown && isEditing) ?
                 <Tldraw
                     forceMobile
-                    snapshot={snapshot}
+                    store={store}
                     onMount={onTldrawMount}
                     components={{
                         MenuPanel: null,
@@ -335,7 +339,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 </Tldraw>
             : (isShown && slidePageMap[currentSlideId] !== undefined) &&
                 <TldrawImage
-                    snapshot={snapshot}
+                    snapshot={store.getSnapshot()}
                     pageId={slidePageMap[currentSlideId]}
                     background={false}
                     bounds={bounds}
