@@ -71,7 +71,14 @@ function CustomActionsMenu() {
     )
 }
 
-export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, container: HTMLDivElement }) {
+export interface TldrevealOverlayProps {
+    /// The instance of Reveal this overlaid on
+    reveal: RevealApi
+    /// The container element in which the overlay is rendered
+    container: HTMLDivElement
+}
+
+export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
     const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
