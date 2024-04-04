@@ -1,4 +1,5 @@
-import React, { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { fileSave } from "browser-fs-access"
 
 import { Api as RevealApi } from "reveal.js"
 
@@ -20,19 +21,16 @@ import {
     createTLStore,
     defaultShapeUtils,
     throttle,
-    PageRecordType
+    PageRecordType,
+    serializeTldrawJsonBlob,
+    TLDRAW_FILE_EXTENSION
 } from "tldraw"
 
 import "tldraw/tldraw.css"
 
 // TODO:
-// - Persistence (temporary and saved file)
-//   - persistenceKey doesn't work, because we override snapshot
-//   - Only persist to localStorage if the deck has an id
-//   - https://tldraw.dev/examples/data/assets/local-storage
+// - Load saved document
 //   - What the .com version does:
-//     - https://github.dev/tldraw/tldraw/blob/1ba9cbfa2afab156da762dcc21425bc03936764f/apps/dotcom/src/utils/useFileSystem.tsx
-//     - serializeTldrawJsonBlob(editor.store)
 //     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
 //       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
 // - Hide while transitioning (or better: animate the canvas with the slide)
@@ -51,10 +49,13 @@ function makeInt(numOrStr: number | string) : number {
     }
 }
 
-function CustomQuickActions({ onClose }) {
+function CustomQuickActions({ onClose, onSave }) {
     return (
         <DefaultQuickActions>
-            <TldrawUiMenuItem id="close" icon="cross" onSelect={() => onClose() } />
+            <TldrawUiMenuItem id="close" icon="cross" onSelect={onClose} />
+            <span style={{transform: "rotate(180deg)"}}>
+                <TldrawUiMenuItem id="save" icon="share-2" onSelect={onSave} />
+            </span>
             <DefaultQuickActionsContent />
         </DefaultQuickActions>
     )
@@ -129,6 +130,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
 
+    // https://tldraw.dev/examples/data/assets/local-storage
     useLayoutEffect(() => {
         let cleanup = () => {}
 
@@ -315,6 +317,14 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         syncEditor({ editor, currentSlide })
     }, [ editor, currentSlide ])
 
+    async function handleSave() {
+        const blob = serializeTldrawJsonBlob(store)
+        await fileSave(blob, { 
+            fileName: (deckId || "untitled") + TLDRAW_FILE_EXTENSION, 
+            extensions: [ TLDRAW_FILE_EXTENSION ]
+        })
+    }
+
     return (
         <Tldraw
             forceMobile
@@ -324,7 +334,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             components={{
                 MenuPanel: null,
                 ActionsMenu: CustomActionsMenu,
-                QuickActions: () => <CustomQuickActions onClose={() => setIsEditing(false)} />
+                QuickActions: () => 
+                    <CustomQuickActions 
+                        onClose={() => setIsEditing(false)}
+                        onSave={handleSave} />
                 }}
                 overrides={{
                     tools(editor, tools) {

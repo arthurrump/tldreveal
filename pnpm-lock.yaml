@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  browser-fs-access:
+    specifier: ^0.35.0
+    version: 0.35.0
   react:
     specifier: ^18.2.0
     version: 18.2.0
@@ -1219,6 +1222,10 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       tslib: 2.6.2
+    dev: false
+
+  /browser-fs-access@0.35.0:
+    resolution: {integrity: sha512-sLoadumpRfsjprP8XzVjpQc0jK8yqHBx0PtUTGYj2fftT+P/t+uyDAQdMgGAPKD011in/O+YYGh7fIs0oG/viw==}
     dev: false
 
   /canvas-size@1.2.6:
