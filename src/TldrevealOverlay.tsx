@@ -205,14 +205,24 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }
 
+    const handleDblclick = (state = { isEditing }) => (event: MouseEvent) => {
+        if (!state.isEditing) {
+            setIsEditing(true)
+            event.stopImmediatePropagation()
+        }
+    }
+
     useEffect(() => {
         const state = { isEditing }
         const handleKeydown_ = handleKeydown(state)
+        const handleDblclick_ = handleDblclick(state)
 
         reveal.addKeyBinding({ keyCode: 68, key: "D", description: "Enter drawing mode" }, handleDKey)
+        window.addEventListener("dblclick", handleDblclick_, true)
         window.addEventListener("keydown", handleKeydown_, true)
         return () => {
             reveal.removeKeyBinding(68)
+            window.removeEventListener("dblclick", handleDblclick_, true)
             window.removeEventListener("keydown", handleKeydown_, true)
         }
     }, [ isEditing ])
