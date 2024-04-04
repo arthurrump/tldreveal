@@ -94,7 +94,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 	const [isEditing, setIsEditing] = useState(false)
 
     const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>({ h: 0, v: 0 })
-    const [presentationScale, setPresentationScale] = useState<number>(1)
 
     const slideWidth = makeInt(reveal.getConfig().width)
     const slideHeight = makeInt(reveal.getConfig().height)
@@ -205,7 +204,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             isDebugMode: false,
             exportBackground: false
         })
-        syncEditor({ editor, currentSlide, presentationScale })
+        syncEditor({ editor, currentSlide })
     }
 
     function stopEditor(state = { editor }) {
@@ -259,10 +258,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         setCurrentSlide({ h: event.indexh, v: event.indexv })
     }
     
-    function handleResize(event) {
-        setPresentationScale(event.scale)
-    }
-    
     const handleOverviewshown = state => _event => {
         hide(state)
     }
@@ -284,13 +279,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         // beforeslidechange
         // slidetransitionend
         reveal.on("slidechanged", handleSlidechanged)
-        reveal.on("resize", handleResize)
+        // resize
         reveal.on("overviewhidden", handleOverviewhidden)
         reveal.on("resumed", handleResumed)
         return () => {
             reveal.off("ready", handleReady)
             reveal.off("slidechanged", handleSlidechanged)
-            reveal.off("resize", handleResize)
             reveal.off("overviewhidden", handleOverviewhidden)
             reveal.off("resumed", handleResumed)
         }
@@ -308,7 +302,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [ editor ])
 
-    function syncEditor(state = { editor, currentSlide, presentationScale }) {
+    function syncEditor(state = { editor, currentSlide }) {
         if (state.editor) {
             // Find the correct page, or create it if there isn't one
             const pageId = PageRecordType.createId(currentSlideId)
@@ -329,8 +323,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }
 
     useEffect(() => {
-        syncEditor({ editor, currentSlide, presentationScale })
-    }, [ editor, currentSlide, presentationScale ])
+        syncEditor({ editor, currentSlide })
+    }, [ editor, currentSlide ])
 
     return (
         <Fragment>
@@ -340,7 +334,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     store={store}
                     onMount={onTldrawMount}
                     components={{
-                        MenuPanel: null,
+                        // MenuPanel: null,
                         ActionsMenu: CustomActionsMenu,
                         QuickActions: () => <CustomQuickActions onClose={stopEditor} />
                     }}
@@ -378,7 +372,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     background={false}
                     bounds={bounds}
                     padding={0}
-                    scale={presentationScale}
                     format="svg" />
             }
         </Fragment>
