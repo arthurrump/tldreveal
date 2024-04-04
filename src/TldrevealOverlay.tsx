@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useState } from "react";
 
 import { Api as RevealApi } from "reveal.js"
 
@@ -36,13 +36,9 @@ import "tldraw/tldraw.css"
 //     - serializeTldrawJsonBlob(editor.store)
 //     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
 //       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
-// - Use `data-id` or `id` of slide (if available), to preserve drawings when order changes
-//   - How to handle un-id-ed slides? In a vertical stack use the stack id + index?
 // - Hide while transitioning (or better: animate the canvas with the slide)
 // - Fix the small jump when switching to SVG
 // - Fix the overlay in scroll mode
-
-type SlideIndex = `${number}.${number}`
 
 function makeInt(numOrStr: number | string) : number {
     if (typeof numOrStr === "string") {
@@ -79,12 +75,12 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     const [editor, setEditor] = useState<Editor | undefined>()
 	const [snapshot, setSnapshot] = useState<StoreSnapshot<TLRecord>>()
     const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
-    const [slidePageMap, setSlidePageMap] = useState<{ [Slide: SlideIndex]: TLPageId }>({})
+    const [slidePageMap, setSlidePageMap] = useState<{ [slide: string]: TLPageId }>({})
 
     const [isShown, setIsShown] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
 
-    const [currentSlide, setCurrentSlide] = useState<SlideIndex>("0.0")
+    const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>({ h: 0, v: 0 })
     const [presentationScale, setPresentationScale] = useState<number>(1)
 
     const slideWidth = makeInt(reveal.getConfig().width)
@@ -95,8 +91,36 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
         return element.getAttribute("data-id") || element.id || undefined
     }
 
-    const deckId : string | undefined = 
+    const deckId : string | undefined = useMemo(() => 
         tryGetId(reveal.getSlidesElement()) || tryGetId(reveal.getRevealElement())
+    , [])
+
+    function getSlideId(index: { h: number, v: number }) : string {
+        const slideElement = reveal.getSlide(index.h, index.v)
+
+        const givenId = tryGetId(slideElement)
+        if (givenId !== undefined) {
+            return givenId
+        }
+
+        if (index.v !== 0) {
+            const stackId = tryGetId(slideElement.parentElement)
+            if (stackId !== undefined) {
+                return `${stackId}.${index.v}`
+            }
+
+            const firstInStackId = getSlideId({ h: index.h, v: 0 })
+            if (firstInStackId.match("^\\d+\\.0$")) {
+                return firstInStackId.replace(".0", `.${index.v}`)
+            } else {
+                return `${firstInStackId}.${index.v}`
+            }
+        }
+
+        return `${index.h}.${index.v}`
+    }
+
+    const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
 
     function saveEditor(state = { editor }) {
         if (!state.editor) {
@@ -180,11 +204,11 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     }, [ isEditing, editor ])
 
     function handleReady(event) {
-        setCurrentSlide(`${event.indexh}.${event.indexv}`)
+        setCurrentSlide({ h: event.indexh, v: event.indexv })
     }
     
     function handleSlidechanged(event) {
-        setCurrentSlide(`${event.indexh}.${event.indexv}`)
+        setCurrentSlide({ h: event.indexh, v: event.indexv })
     }
     
     function handleResize(event) {
@@ -239,12 +263,12 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
     function syncEditor(state = { editor, slidePageMap, currentSlide, presentationScale }) {
         if (state.editor) {
             // Find the correct pageId, or create it if there isn't one
-            let pageId = state.slidePageMap[currentSlide]
+            let pageId = state.slidePageMap[currentSlideId]
             if (pageId === undefined) {
-                state.editor.createPage({ name: currentSlide })
+                state.editor.createPage({ name: currentSlideId })
                 const pages = state.editor.getPages()
                 pageId = pages[pages.length - 1].id
-                setSlidePageMap({ ...state.slidePageMap, [currentSlide]: pageId })
+                setSlidePageMap({ ...state.slidePageMap, [currentSlideId]: pageId })
             }
 
             // Navigate to the correct page if we're not there yet
@@ -302,10 +326,10 @@ export function TldrevealOverlay({ reveal, container }: { reveal: RevealApi, con
                     }}
                     >
                 </Tldraw>
-            : (isShown && slidePageMap[currentSlide] !== undefined) &&
+            : (isShown && slidePageMap[currentSlideId] !== undefined) &&
                 <TldrawImage
                     snapshot={snapshot}
-                    pageId={slidePageMap[currentSlide]}
+                    pageId={slidePageMap[currentSlideId]}
                     background={false}
                     bounds={bounds}
                     padding={0}
