@@ -6,7 +6,6 @@ import {
     Box,
     Editor,
     Tldraw,
-    TldrawImage,
     DefaultQuickActions,
     DefaultQuickActionsContent,
     TldrawUiMenuItem,
@@ -18,7 +17,6 @@ import {
     RotateCWMenuItem,
     StackMenuItems,
     DefaultActionsMenu,
-    ReadonlySharedStyleMap,
     createTLStore,
     defaultShapeUtils,
     throttle,
@@ -43,7 +41,6 @@ import "tldraw/tldraw.css"
 // - Optional button to start drawing without a keyboard
 // - Quick way to clear the current slide
 // - Quick way to clear the entire presentation
-// - Fix the small jump when switching to SVG
 // - Fix the overlay in scroll mode
 
 function makeInt(numOrStr: number | string) : number {
@@ -86,9 +83,7 @@ export interface TldrevealOverlayProps {
 
 export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
-
     const [editor, setEditor] = useState<Editor | undefined>()
-    const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
 
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -167,39 +162,15 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         return cleanup
     }, [ store ])
 
-    function saveEditor(state = { editor }) {
-        if (!state.editor) {
-            console.warn("Trying to save editor, but no editor found!")
-        } else {
-            setSharedStyles(state.editor.getSharedStyles())
-        }
-    }
-
-    function show() {
-        setIsShown(true)
-    }
-
-    function hide(state = { editor }) {
-        if (editor !== undefined) {
-            saveEditor(state)
-        }
-        setIsShown(false)
-    }
-
-    function startEditor() {
-        setIsEditing(true)
-    }
-
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
         editor.setCurrentTool("draw")
-        if (sharedStyles !== undefined) {
-            for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
-                if (sharedStyle.type === "shared") {
-                    editor.setStyleForNextShapes(styleProp, sharedStyle.value)
-                }
-            }
-        }
+        // TODO: Set up initial style
+        // for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
+        //     if (sharedStyle.type === "shared") {
+        //         editor.setStyleForNextShapes(styleProp, sharedStyle.value)
+        //     }
+        // }
         editor.updateInstanceState({ 
             isDebugMode: false,
             exportBackground: false
@@ -207,13 +178,9 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         syncEditor({ editor, currentSlide })
     }
 
-    function stopEditor(state = { editor }) {
-        saveEditor(state)
-        setIsEditing(false)
-        setEditor(undefined)
-    }
-
     useEffect(() => {
+        container.classList.toggle("tldreveal-hidden", !isShown)
+
         if (isShown && isEditing) {
             container.classList.remove("tldreveal-inactive")
             container.setAttribute("data-prevent-swipe", "true")
@@ -228,18 +195,18 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }, [ isShown, isEditing ])
 
     function handleDKey() {
-        startEditor()
+        setIsEditing(true)
     }
 
-    const handleKeydown = (state = { isEditing, editor }) => (event: KeyboardEvent) => {
+    const handleKeydown = (state = { isEditing }) => (event: KeyboardEvent) => {
         if (state.isEditing && event.key === "Escape") {
-            stopEditor(state)
+            setIsEditing(false)
             event.stopImmediatePropagation()
         }
     }
 
     useEffect(() => {
-        const state = { isEditing, editor }
+        const state = { isEditing }
         const handleKeydown_ = handleKeydown(state)
 
         reveal.addKeyBinding({ keyCode: 68, key: "D", description: "Enter drawing mode" }, handleDKey)
@@ -248,7 +215,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             reveal.removeKeyBinding(68)
             window.removeEventListener("keydown", handleKeydown_, true)
         }
-    }, [ isEditing, editor ])
+    }, [ isEditing ])
 
     function handleReady(event) {
         setCurrentSlide({ h: event.indexh, v: event.indexv })
@@ -258,20 +225,20 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         setCurrentSlide({ h: event.indexh, v: event.indexv })
     }
     
-    const handleOverviewshown = state => _event => {
-        hide(state)
+    function handleOverviewshown(_event) {
+        setIsShown(false)
     }
     
     function handleOverviewhidden(_event) {
-        show()
+        setIsShown(true)
     }
 
-    const handlePaused = state => _event => {
-        hide(state)
+    function handlePaused(_event) {
+        setIsShown(false)
     }
 
     function handleResumed(_event) {
-        show()
+        setIsShown(true)
     }
     
     useEffect(() => {
@@ -279,13 +246,16 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         // beforeslidechange
         // slidetransitionend
         reveal.on("slidechanged", handleSlidechanged)
-        // resize
+        reveal.on("overviewshown", handleOverviewshown)
         reveal.on("overviewhidden", handleOverviewhidden)
+        reveal.on("paused", handlePaused)
         reveal.on("resumed", handleResumed)
         return () => {
             reveal.off("ready", handleReady)
             reveal.off("slidechanged", handleSlidechanged)
+            reveal.off("overviewshown", handleOverviewshown)
             reveal.off("overviewhidden", handleOverviewhidden)
+            reveal.off("paused", handlePaused)
             reveal.off("resumed", handleResumed)
         }
     }, [])
@@ -301,18 +271,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         reveal.on("resize", handleResize_)
         return () => {
             reveal.off("resize", handleResize_)
-        }
-    }, [ editor ])
-
-    useEffect(() => {
-        const handleOverviewshown_ = handleOverviewshown({ editor })
-        const handlePaused_ = handlePaused({ editor })
-
-        reveal.on("overviewshown", handleOverviewshown_)
-        reveal.on("paused", handlePaused_)
-        return () => {
-            reveal.off("overviewshown", handleOverviewshown_)
-            reveal.off("paused", handlePaused_)        
         }
     }, [ editor ])
 
@@ -348,53 +306,42 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }, [ editor, currentSlide ])
 
     return (
-        <Fragment>
-            { (isShown && isEditing) ?
-                <Tldraw
-                    forceMobile
-                    store={store}
-                    onMount={onTldrawMount}
-                    components={{
-                        // MenuPanel: null,
-                        ActionsMenu: CustomActionsMenu,
-                        QuickActions: () => <CustomQuickActions onClose={stopEditor} />
-                    }}
-                    overrides={{
-                        tools(editor, tools) {
-                            // Remove the keyboard shortcut for the hand tool
-                            tools.hand.kbd = undefined
-                            return tools
-                        },
-                        toolbar(editor, toolbar) {
-                            // Remove the hand tool from the toolbar
-                            const handIndex = toolbar.findIndex(t => t.id === "hand")
-                            if (handIndex !== -1)
-                                toolbar.splice(handIndex, 1)
-                            return toolbar
-                        },
-                        // Remove actions related to zooming
-                        actions(editor, actions) {
-                            delete actions["select-zoom-tool"]
-                            delete actions["zoom-in"]
-                            delete actions["zoom-out"]
-                            delete actions["zoom-to-100"]
-                            delete actions["zoom-to-fit"]
-                            delete actions["zoom-to-selection"]
-                            delete actions["back-to-content"]
-                            return actions
-                        }
-                    }}
-                    >
-                </Tldraw>
-            : (isShown && store.has(PageRecordType.createId(currentSlideId))) &&
-                <TldrawImage
-                    snapshot={store.getSnapshot()}
-                    pageId={PageRecordType.createId(currentSlideId)}
-                    background={false}
-                    bounds={bounds}
-                    padding={0}
-                    format="svg" />
-            }
-        </Fragment>
+        <Tldraw
+            forceMobile
+            hideUi={!isEditing}
+            store={store}
+            onMount={onTldrawMount}
+            components={{
+                MenuPanel: null,
+                ActionsMenu: CustomActionsMenu,
+                QuickActions: () => <CustomQuickActions onClose={() => setIsEditing(false)} />
+                }}
+                overrides={{
+                    tools(editor, tools) {
+                        // Remove the keyboard shortcut for the hand tool
+                        tools.hand.kbd = undefined
+                        return tools
+                    },
+                    toolbar(editor, toolbar) {
+                        // Remove the hand tool from the toolbar
+                        const handIndex = toolbar.findIndex(t => t.id === "hand")
+                        if (handIndex !== -1)
+                        toolbar.splice(handIndex, 1)
+                    return toolbar
+                },
+                // Remove actions related to zooming
+                actions(editor, actions) {
+                    delete actions["select-zoom-tool"]
+                    delete actions["zoom-in"]
+                    delete actions["zoom-out"]
+                    delete actions["zoom-to-100"]
+                    delete actions["zoom-to-fit"]
+                    delete actions["zoom-to-selection"]
+                    delete actions["back-to-content"]
+                    return actions
+                }
+            }}
+            >
+        </Tldraw>
     )
 }

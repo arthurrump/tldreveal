@@ -12,6 +12,10 @@
     pointer-events: none;
 }
 
+.tldreveal-hidden {
+    display: none;
+}
+
 .tldreveal .tl-container {
     --color-background: rgba(255, 255, 255, 0);
 }
