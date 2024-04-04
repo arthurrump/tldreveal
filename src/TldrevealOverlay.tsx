@@ -88,7 +88,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 
-    const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>({ h: 0, v: 0 })
+    const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>(reveal.getIndices())
 
     const slideWidth = makeInt(reveal.getConfig().width)
     const slideHeight = makeInt(reveal.getConfig().height)
