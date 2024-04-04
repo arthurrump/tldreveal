@@ -41,6 +41,22 @@ import "tldraw/tldraw.css"
 // - Quick way to clear the entire presentation
 // - Fix the overlay in scroll mode
 
+type DebouncedFunction<T extends (...args: any) => void> = (...args: Parameters<T>) => void
+function debounce<T extends (...args: any) => void>(func: T, time: number) : DebouncedFunction<T> {
+    let timerId: number | undefined
+
+    return function(this: any) : void {
+        const args = arguments
+        const context = this
+
+        if (timerId !== undefined) clearTimeout(timerId)
+        timerId = setTimeout(() => {
+            func.apply(context, args)
+            timerId = undefined
+        }, time)
+    }
+}
+
 function makeInt(numOrStr: number | string) : number {
     if (typeof numOrStr === "string") {
         return parseInt(numOrStr)
@@ -272,17 +288,27 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [])
 
-    const handleResize = (state = { editor }) => _event => {
-        syncEditorBounds(state)
+    const handleResize = (state = { editor }) => {
+        // Run both a throttled and debounced version: the throttled function
+        // handles the in-between values, without completely flooding tldraw
+        // with zoom requests; the debounced version then waits until the final
+        // dimensions have been reached and everything is stabilised to make
+        // sure the final adjustement puts it in the right position.
+        const throttled = throttle(() => syncEditorBounds(state), 100)
+        const debounced = debounce(() => syncEditorBounds(state), 500)
+        return () => {
+            throttled()
+            debounced()
+        }
     }
 
     useEffect(() => {
         const state = { editor }
         const handleResize_ = handleResize(state)
 
-        reveal.on("resize", handleResize_)
+        window.addEventListener("resize", handleResize_)
         return () => {
-            reveal.off("resize", handleResize_)
+            window.removeEventListener("resize", handleResize_)
         }
     }, [ editor ])
 
