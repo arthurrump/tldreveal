@@ -21,7 +21,8 @@ import {
     DefaultActionsMenu,
     ReadonlySharedStyleMap,
     createTLStore,
-    defaultShapeUtils
+    defaultShapeUtils,
+    PageRecordType
 } from "tldraw"
 
 import "tldraw/tldraw.css"
@@ -87,7 +88,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     const [editor, setEditor] = useState<Editor | undefined>()
     const [sharedStyles, setSharedStyles] = useState<ReadonlySharedStyleMap>()
-    const [slidePageMap, setSlidePageMap] = useState<{ [slide: string]: TLPageId }>({})
 
     const [isShown, setIsShown] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
@@ -171,7 +171,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             isDebugMode: false,
             exportBackground: false
         })
-        syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
+        syncEditor({ editor, currentSlide, presentationScale })
     }
 
     function stopEditor(state = { editor }) {
@@ -271,15 +271,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [ editor ])
 
-    function syncEditor(state = { editor, slidePageMap, currentSlide, presentationScale }) {
+    function syncEditor(state = { editor, currentSlide, presentationScale }) {
         if (state.editor) {
-            // Find the correct pageId, or create it if there isn't one
-            let pageId = state.slidePageMap[currentSlideId]
-            if (pageId === undefined) {
-                state.editor.createPage({ name: currentSlideId })
-                const pages = state.editor.getPages()
-                pageId = pages[pages.length - 1].id
-                setSlidePageMap({ ...state.slidePageMap, [currentSlideId]: pageId })
+            // Find the correct page, or create it if there isn't one
+            const pageId = PageRecordType.createId(currentSlideId)
+            if (!state.editor.getPage(pageId)) {
+                state.editor.createPage({ id: pageId, name: currentSlideId })
             }
 
             // Navigate to the correct page if we're not there yet
@@ -295,8 +292,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }
 
     useEffect(() => {
-        syncEditor({ editor, slidePageMap, currentSlide, presentationScale })
-    }, [ editor, slidePageMap, currentSlide, presentationScale ])
+        syncEditor({ editor, currentSlide, presentationScale })
+    }, [ editor, currentSlide, presentationScale ])
 
     return (
         <Fragment>
@@ -337,10 +334,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     }}
                     >
                 </Tldraw>
-            : (isShown && slidePageMap[currentSlideId] !== undefined) &&
+            : (isShown && store.has(PageRecordType.createId(currentSlideId))) &&
                 <TldrawImage
                     snapshot={store.getSnapshot()}
-                    pageId={slidePageMap[currentSlideId]}
+                    pageId={PageRecordType.createId(currentSlideId)}
                     background={false}
                     bounds={bounds}
                     padding={0}
