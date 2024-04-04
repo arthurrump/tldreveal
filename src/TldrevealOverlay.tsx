@@ -228,12 +228,13 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [ isShown, isEditing ])
 
+    function handleDKey() {
+        startEditor()
+    }
+
     const handleKeydown = (state = { isEditing, editor }) => (event: KeyboardEvent) => {
         if (state.isEditing && event.key === "Escape") {
             stopEditor(state)
-            event.stopImmediatePropagation()
-        } else if (!state.isEditing && event.key === "d") {
-            startEditor()
             event.stopImmediatePropagation()
         }
     }
@@ -242,8 +243,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         const state = { isEditing, editor }
         const handleKeydown_ = handleKeydown(state)
 
+        reveal.addKeyBinding({ keyCode: 68, key: "D", description: "Enter drawing mode" }, handleDKey)
         window.addEventListener("keydown", handleKeydown_, true)
         return () => {
+            reveal.removeKeyBinding(68)
             window.removeEventListener("keydown", handleKeydown_, true)
         }
     }, [ isEditing, editor ])
