@@ -101,7 +101,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const bounds = new Box(0, 0, slideWidth, slideHeight)
 
     function tryGetId(element: HTMLElement) : string | undefined {
-        return element.getAttribute("data-id") || element.id || undefined
+        return element.getAttribute("data-tlid") || element.id || undefined
     }
 
     const deckId : string | undefined = useMemo(() => 
