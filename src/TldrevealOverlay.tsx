@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { fileSave } from "browser-fs-access"
+import { fileSave, fileOpen } from "browser-fs-access"
 
 import { Api as RevealApi } from "reveal.js"
 
@@ -26,24 +26,19 @@ import {
     TldrawUiMenuGroup,
     TLUiActionsContextType,
     useActions,
-    TldrawUiMenuCheckboxItem,
     DefaultMainMenu,
     EditSubmenu,
     ExportFileContentSubMenu,
     ExtrasGroup,
     PreferencesGroup,
-    TldrawUiDropdownMenuItem,
-    TldrawUiButton,
-    TldrawUiButtonLabel,
-    useEditor
 } from "tldraw"
 
 import "tldraw/tldraw.css"
 
-import { useFilesystem } from "./FilesystemContext";
-
 // TODO:
 // - Load saved document, via file picker and from url
+//   - Fix keyboard not working after opening a file
+//   - Fix sync after file opening
 // - Hide while transitioning (or better: animate the canvas with the slide)
 // - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
@@ -80,23 +75,11 @@ function makeInt(numOrStr: number | string) : number {
 
 function CustomFileSubmenu() {
     const actions = useActions()
-    const filesystem = useFilesystem()
     return (
         <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
             <TldrawUiMenuGroup id="tldreveal-file-actions">
                 <TldrawUiMenuItem {...actions["tldreveal.open-file"]} />
                 <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
-            </TldrawUiMenuGroup>
-            <TldrawUiMenuGroup id="tldreveal-file-preferences">
-                <TldrawUiDropdownMenuItem>
-                    <TldrawUiButton type="menu" disabled={true}>
-                        <TldrawUiButtonLabel>{filesystem.openedFile || "No file selected"}</TldrawUiButtonLabel>
-                    </TldrawUiButton>
-                </TldrawUiDropdownMenuItem>
-                <TldrawUiMenuCheckboxItem 
-                    checked={filesystem.autosaveEnabled}
-                    {...actions["tldreveal.toggle-autosave"]}
-                />
             </TldrawUiMenuGroup>
         </TldrawUiMenuSubmenu>
     )
@@ -160,8 +143,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
     const [editor, setEditor] = useState<Editor | undefined>()
 
-    const filesystem = useFilesystem()
-
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 
@@ -208,10 +189,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     // https://tldraw.dev/examples/data/assets/local-storage
     useLayoutEffect(() => {
-        const storageKey = deckId => `TLDREVEAL_SNAPSHOT__${deckId}`
+        let cleanup = () => {}
 
         if (deckId) {
-            const storedSnapshot = localStorage.getItem(storageKey(deckId))
+            const storageKey = `TLDREVEAL_SNAPSHOT__${deckId}`
+
+            const storedSnapshot = localStorage.getItem(storageKey)
             if (storedSnapshot) {
                 try {
                     const snapshot = JSON.parse(storedSnapshot)
@@ -220,26 +203,22 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     console.error("Failed to load tldreveal snapshot from local storage: ", error.message, error)
                 }
             }
-        }
 
-        const cleanupStoreListen = store.listen(
-            throttle(() => {
-                const snapshot = store.getSnapshot()
-                const snapshotJson = JSON.stringify(snapshot)
-                if (deckId) {
-                    localStorage.setItem(storageKey(deckId), snapshotJson)
-                }
-                if (filesystem.autosaveAvailable && filesystem.autosaveEnabled) {
-                    filesystem.autosave(new Blob([ snapshotJson ]))
-                }
-            }, 500)
-        )
+            const cleanupStoreListen = store.listen(
+                throttle(() => {
+                    const snapshot = store.getSnapshot()
+                    localStorage.setItem(storageKey, JSON.stringify(snapshot))
+                }, 500)
+            )
+
+            cleanup = () => {
+                cleanupStoreListen()
+            }
+        }
 
         setIsShown(true)
 
-        return () => {
-            cleanupStoreListen()
-        }
+        return cleanup
     }, [ store ])
 
     function initializeEditor(state = { editor }) {
@@ -415,7 +394,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             "tldreveal.action.close": "Exit drawing mode",
             "tldreveal.action.open-file": "Open file",
             "tldreveal.action.save-file": "Save file",
-            "tldreveal.preference.autosave": "Autosave",
 
             // Set the default name for built-in export functions
             "document.default-name": deckId || "unknown"
@@ -439,7 +417,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             async onSelect(_source) {
                 let file: File
                 try {
-                    file = await filesystem.openFile({
+                    file = await fileOpen({
                         extensions: [ TLDREVEAL_FILE_EXTENSION ],
                         multiple: false,
                         description: "tldreveal project"
@@ -452,6 +430,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 const snapshot = JSON.parse(await file.text())
                 store.loadSnapshot(snapshot)
                 initializeEditor()
+                // TODO: Fix this properly
+                setTimeout(() => syncEditorBounds(), 500)
             }
         },
         ["tldreveal.save-file"]: {
@@ -461,19 +441,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             kbd: "$s",
             async onSelect(_source) {
                 const blob = new Blob([ JSON.stringify(store.getSnapshot()) ])
-                filesystem.saveFile(blob, {
+                await fileSave(blob, {
                     fileName: (deckId || "untitled") + TLDREVEAL_FILE_EXTENSION, 
                     extensions: [ TLDREVEAL_FILE_EXTENSION ]
                 })
-            }
-        },
-        ["tldreveal.toggle-autosave"]: {
-            id: "tldreveal.toggle-autosave",
-            label: "tldreveal.preference.autosave",
-            readonlyOk: true,
-            checkbox: true,
-            onSelect(_source) {
-                filesystem.toggleAutosave()
             }
         }
     }

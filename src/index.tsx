@@ -3,7 +3,6 @@ import ReactClient from "react-dom/client"
 
 import { Plugin as RevealPlugin, Api as RevealApi } from "reveal.js"
 
-import { FilesystemProvider } from "./FilesystemContext"
 import { TldrevealOverlay } from "./TldrevealOverlay"
 
 import "./style.css"
@@ -38,9 +37,7 @@ function init(reveal: RevealApi) {
         // Start Swordpoing inside the container
         const reactRoot = ReactClient.createRoot(container)
         reactRoot.render(
-            <FilesystemProvider>
-                <TldrevealOverlay reveal={reveal} container={container} />
-            </FilesystemProvider>
+            <TldrevealOverlay reveal={reveal} container={container} />
         );
     }
 }
