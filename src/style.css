@@ -1,4 +1,6 @@
- .tldreveal {
+/* Container style */
+.tldreveal {
+    /* Fill the full viewport by default, overlaid on the slide content */
     position: absolute;
     top: 0;
     left: 0;
@@ -16,20 +18,29 @@
     display: none;
 }
 
+/* The tldraw canvas background should be transparent */
 .tldreveal .tl-container {
     --color-background: rgba(255, 255, 255, 0);
 }
 
-.tldreveal .tl-canvas {
+/* Place the tldraw canvas according to slide size and whether the center option
+   is enabled or disabled. */
+.reveal .tldreveal .tl-canvas {
     width: calc(var(--slide-width) * var(--slide-scale));
     height: calc(var(--slide-height) * var(--slide-scale));
+    
+    margin: 0;
 
     position: absolute;
-    top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
+    top: 0;
     left: calc((100vw - var(--slide-width) * var(--slide-scale)) / 2);
-    margin: 0;   
 }
 
+.reveal.center .tldreveal .tl-canvas {
+    top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
+}
+
+/* Slide transition animation styles */
 .tldreveal.start-transition .tl-canvas {
     transition: opacity 200ms cubic-bezier(0.260, 0.860, 0.440, 0.985);
     opacity: 0;
