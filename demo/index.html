@@ -7,22 +7,111 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
-    <div class="reveal">
-        <div class="slides" data-tlid="tldreveal/demo">
+    <div class="reveal" id="tldreveal/demo">
+        <div class="slides">
             <section id="title">
-                <h1>tldreveal Demo</h1>
-                <p>A small presentation to demonstrate tldreveal</p>
+                <h1>tldreveal</h1>
+                <p>A drawing tool for Reveal.js based on tldraw</p>
             </section>
-            <section id="bullets">
-                <h2>This is a slide with bullets</h2>
-                <ul>
-                    <li>First point</li>
-                    <li class="fragment">Second point comes in</li>
-                    <li class="fragment">And a third</li>
-                </ul>
+            <section>
+                <section id="usage">
+                    <h2>Try it!</h2>
+                    <p>Press <i>D</i> or double click to enter drawing mode.</p>
+                </section>
+                <section>
+                    <p>Drawing mode starts with the pencil by default. You can pick a different tool from the toolbar.</p>
+                    <img src="assets/toolbar.png" alt="The tldraw toolbar at the bottom of the screen" />
+                </section>
+                <section>
+                    <p>Use the style menu right of the toolbar to choose colour, line thickness etc.</p>
+                    <img src="assets/styles.png" alt="The tldraw toolbar with the style menu opened" />
+                </section>
+                <section>
+                    <p>Existing annotations can be erased or changed. Use the <i>Select</i> tool to pick a shape and try changing its color.</p>
+                </section>
+                <section>
+                    <p>To hide the drawing UI and return to normal interaction with the slides, press <i>Escape</i> or use the &Cross; button in the action bar.</p>
+                </section>
             </section>
-            <section id="third" data-background="darkred">
-                <h2>The third slide</h2>
+            <section>
+                <section id="configuration">
+                    <h2>Installation</h2>
+                    <pre><code data-trim class="shell">
+                        npm install --save tldreveal
+                    </code></pre>
+                </section>
+                <section>
+                    <p>Configure the plugin:</p>
+                    <pre><code data-trim class="javascript">
+                        import Reveal from "reveal.js"
+                        import { Tldreveal } from "tldreveal"
+
+                        Reveal.initialize({
+                            // Disable scroll view, because it crashes tldreveal
+                            scrollActivationWidth: null,
+                            plugins: [ Tldreveal ],
+                            tldreveal: {
+                                // If using a light Reveal.js theme, disable the default dark mode
+                                isDarkMode: false
+                            }
+                        })
+                    </code></pre>
+                </section>
+                <section>
+                    <p>Reference the included CSS file:</p>
+                </section>
+            </section>
+            <section>
+                <section id="features">
+                    <h2>Features</h2>
+                </section>
+                <section>
+                    <h3>Saves drawing state across refreshes</h3>
+                    <p>Requires setting the <code>id</code> or <code>data-tlid</code> attribute on the reveal container to a unique identifier of your deck.</p>
+                </section>
+                <section>
+                    <h3>Maintain drawing state over slide moves</h3>
+                    <p>Uses the <code>id</code> or <code>data-tlid</code> attribute to identify each slide.</p>
+                </section>
+                <section data-tlid="shared">
+                    <h3>Share drawing state over multiple slides</h3>
+                    <p>Slides with the same <code>data-tlid</code> attribute share the same drawings.</p>
+                </section>
+                <section data-tlid="shared">
+                    <p>Such as this one.</p>
+                </section>
+                <section data-background="black">
+                    <h3>Automatic dark mode switch based on background color</h3>
+                </section>
+                <section>
+                    <h3>Save drawings to a file on disk</h3>
+                    <p>Use the menu in the top-left corner when in drawing mode.</p>
+                </section>
+                <section>
+                    <h3>Load saved drawings from a url</h3>
+                    <p>This presentation uses it!</p>
+                </section>
+                <section>
+                    <h3>Quickly clear drawings</h3>
+                    <p>Use the top-left menu to clear the current slide or the entire deck.</p>
+                </section>
+            </section>
+            <section>
+                <section id="limitations">
+                    <h2>Limitations</h2>
+                    <p>It's not perfect.</p>
+                </section>
+                <section>
+                    <h3>Scroll view is not supported</h3>
+                    <p>Scroll view changes a lot about the structure behind the scenes and is thus incompatible with tldreveal.</p>
+                </section>
+                <section>
+                    <h3>Maximum 40 slides with drawings</h3>
+                    <p>Your presentation may be longer, but you can draw only on 40 of your slides. This is a limitation from tldraw.</p>
+                </section>
+            </section>
+            <section id="closer">
+                Check it out on <a href="https://github.com/arthurrump/tldreveal">GitHub</a>.
             </section>
         </div>
     </div>
