@@ -38,6 +38,8 @@ export interface TldrevealConfig {
         verticalAlign?: TLDefaultVerticalAlignStyle
     }
 
+    disableLayoutWarning: boolean
+
     isDarkMode: boolean
     automaticDarkMode: boolean
 }
@@ -52,6 +54,7 @@ declare global {
 
 export const defaultTldrevealConfig: TldrevealConfig = {
     defaultStyles: {},
+    disableLayoutWarning: true,
     isDarkMode: true,
     automaticDarkMode: true
 }
