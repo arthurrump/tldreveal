@@ -43,10 +43,10 @@ import { debounce, makeInt } from "./util"
 // - Load saved document, via file picker and from url
 //   - Fix keyboard not working after opening a file
 //   - Fix sync after file opening
-// - Don't create new pages for slides without drawings, to not run into tldraws 40 page max page limit too quickly on a large deck
 // - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
 // - Fix the overlay in scroll mode
+// - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
@@ -380,9 +380,19 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 state.editor.createPage({ id: pageId, name: currentSlideId })
             }
 
-            // Navigate to the correct page if we're not there yet
-            if (state.editor.getCurrentPageId() !== pageId) {
+            // Navigate to the correct page if we're not there yet, and delete
+            // the previous page if it is empty
+            const oldCurrentPageId = state.editor.getCurrentPageId()
+            if (oldCurrentPageId !== pageId) {
+                // Delete the old current page if it has no shapes on it
+                const deleteOldCurrent = 
+                    state.editor.getCurrentPageShapeIds().size === 0
+
                 state.editor.setCurrentPage(pageId)
+
+                if (deleteOldCurrent) {
+                    state.editor.deletePage(oldCurrentPageId)
+                }
             }
 
             // Set the bounds correctly on the new page
