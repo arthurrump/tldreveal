@@ -3,6 +3,7 @@ import ReactClient from "react-dom/client"
 
 import { Plugin as RevealPlugin, Api as RevealApi } from "reveal.js"
 
+import "./config"
 import { TldrevealOverlay } from "./TldrevealOverlay"
 
 import "./style.css"

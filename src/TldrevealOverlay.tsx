@@ -33,11 +33,15 @@ import {
     PreferencesGroup,
     transact,
     TLShapeId,
+    createTLUser,
+    TLUserPreferences,
 } from "tldraw"
+import { useAtom } from "@tldraw/state"
 
 import "tldraw/tldraw.css"
 
 import { debounce, makeInt } from "./util"
+import { getTldrevealConfig } from "./config";
 
 // TODO:
 // - Load saved document, via file picker and from url
@@ -130,8 +134,15 @@ export interface TldrevealOverlayProps {
 }
 
 export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
+    const config = getTldrevealConfig(reveal)
+
     const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
     const [editor, setEditor] = useState<Editor | undefined>()
+
+    // Use a local user preferences atom, to prevent sharing dark mode status
+    // across multiple instances
+    const userPreferences = useAtom<TLUserPreferences>("userPreferences", { id: "tldreveal", isDarkMode: config.isDarkMode })
+    const [isolatedUser] = useState(() => createTLUser({ userPreferences, setUserPreferences: userPreferences.set }))
 
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -395,6 +406,18 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 }
             }
 
+            if (config.automaticDarkMode) {
+                const currentSlideClasses = 
+                reveal.getSlide(currentSlide.h, currentSlide.v).classList
+                if (currentSlideClasses.contains("has-dark-background")) {
+                    userPreferences.update(u => ({ ...u, isDarkMode: true }))
+                } else if (currentSlideClasses.contains("has-light-background")) {
+                    userPreferences.update(u => ({ ...u, isDarkMode: false }))
+                } else {
+                    userPreferences.update(u => ({ ...u, isDarkMode: config.isDarkMode }))
+                }
+            }
+
             // Set the bounds correctly on the new page
             syncEditorBounds(state)
         }
@@ -506,6 +529,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             forceMobile
             hideUi={!isEditing}
             store={store}
+            user={isolatedUser}
             onMount={onTldrawMount}
             components={{
                 PageMenu: null,
