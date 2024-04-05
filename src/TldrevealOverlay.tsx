@@ -41,7 +41,6 @@ import { debounce, makeInt } from "./util"
 // - Load saved document, via file picker and from url
 //   - Fix keyboard not working after opening a file
 //   - Fix sync after file opening
-// - Hide while transitioning (or better: animate the canvas with the slide)
 // - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
 // - Optional button to start drawing without a keyboard
@@ -273,7 +272,23 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }
     
     function handleSlidechanged(event) {
-        setCurrentSlide({ h: event.indexh, v: event.indexv })
+        const currentTransition: string | undefined = 
+            reveal.getConfig().transition 
+            || event.currentSlide.getAttribute("data-transition")
+        if (currentTransition === "none" || currentTransition?.includes("none-in")) {
+            setCurrentSlide({ h: event.indexh, v: event.indexv })
+        } else {
+            container.classList.toggle("start-transition", true)
+            setTimeout(() => {
+                setCurrentSlide({ h: event.indexh, v: event.indexv })
+                container.classList.toggle("transitioning", true)
+            }, 200)
+        }
+    }
+    
+    function handleSlidetransitionend(_event) {
+        container.classList.toggle("start-transition", false)
+        container.classList.toggle("transitioning", false)
     }
     
     function handleOverviewshown(_event) {
@@ -295,8 +310,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     useEffect(() => {
         reveal.on("ready", handleReady)
         // beforeslidechange
-        // slidetransitionend
         reveal.on("slidechanged", handleSlidechanged)
+        reveal.on("slidetransitionend", handleSlidetransitionend)
         reveal.on("overviewshown", handleOverviewshown)
         reveal.on("overviewhidden", handleOverviewhidden)
         reveal.on("paused", handlePaused)
