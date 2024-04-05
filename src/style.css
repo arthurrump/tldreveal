@@ -20,9 +20,9 @@
     --color-background: rgba(255, 255, 255, 0);
 }
 
-.tldreveal .tl-canvas, .tldreveal .tl-container > img {
-    width: calc(var(--slide-width) * var(--slide-scale)) !important;
-    height: calc(var(--slide-height) * var(--slide-scale)) !important;
+.tldreveal .tl-canvas {
+    width: calc(var(--slide-width) * var(--slide-scale));
+    height: calc(var(--slide-height) * var(--slide-scale));
 
     position: absolute;
     top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
