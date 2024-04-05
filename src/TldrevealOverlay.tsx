@@ -198,7 +198,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         return cleanup
     }, [ store ])
 
-    function initializeEditor(state = { editor }) {
+    function initializeEditor(state = { editor, currentSlide }) {
         state.editor.setCurrentTool("draw")
         // TODO: Set up initial style
         // for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
@@ -210,12 +210,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             isDebugMode: false,
             exportBackground: false
         })
-        syncEditor({ editor, currentSlide })
+        syncEditor(state)
     }
 
     function onTldrawMount(editor: Editor) {
         setEditor(editor)
-        initializeEditor({ editor })
+        initializeEditor({ editor, currentSlide })
     }
 
     useEffect(() => {
