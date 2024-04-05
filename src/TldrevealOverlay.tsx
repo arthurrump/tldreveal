@@ -22,17 +22,28 @@ import {
     defaultShapeUtils,
     throttle,
     PageRecordType,
-    serializeTldrawJsonBlob,
-    TLDRAW_FILE_EXTENSION
+    TldrawUiMenuSubmenu,
+    TldrawUiMenuGroup,
+    TLUiActionsContextType,
+    useActions,
+    TldrawUiMenuCheckboxItem,
+    DefaultMainMenu,
+    EditSubmenu,
+    ExportFileContentSubMenu,
+    ExtrasGroup,
+    PreferencesGroup,
+    TldrawUiDropdownMenuItem,
+    TldrawUiButton,
+    TldrawUiButtonLabel,
+    useEditor
 } from "tldraw"
 
 import "tldraw/tldraw.css"
 
+import { useFilesystem } from "./FilesystemContext";
+
 // TODO:
-// - Load saved document
-//   - What the .com version does:
-//     - parseAndLoadDocument(editor, await file.text(), msg, addToast)
-//       - Is marked @internal, but maybe we can use it too. Does some checking and migration, so might be nice.
+// - Load saved document, via file picker and from url
 // - Hide while transitioning (or better: animate the canvas with the slide)
 // - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
@@ -40,6 +51,8 @@ import "tldraw/tldraw.css"
 // - Quick way to clear the current slide
 // - Quick way to clear the entire presentation
 // - Fix the overlay in scroll mode
+
+const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
 type DebouncedFunction<T extends (...args: any) => void> = (...args: Parameters<T>) => void
 function debounce<T extends (...args: any) => void>(func: T, time: number) : DebouncedFunction<T> {
@@ -65,13 +78,58 @@ function makeInt(numOrStr: number | string) : number {
     }
 }
 
-function CustomQuickActions({ onClose, onSave }) {
+function CustomFileSubmenu() {
+    const actions = useActions()
+    const filesystem = useFilesystem()
+    return (
+        <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
+            <TldrawUiMenuGroup id="tldreveal-file-actions">
+                <TldrawUiMenuItem {...actions["tldreveal.open-file"]} />
+                <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
+            </TldrawUiMenuGroup>
+            <TldrawUiMenuGroup id="tldreveal-file-preferences">
+                <TldrawUiDropdownMenuItem>
+                    <TldrawUiButton type="menu" disabled={true}>
+                        <TldrawUiButtonLabel>{filesystem.openedFile || "No file selected"}</TldrawUiButtonLabel>
+                    </TldrawUiButton>
+                </TldrawUiDropdownMenuItem>
+                <TldrawUiMenuCheckboxItem 
+                    checked={filesystem.autosaveEnabled}
+                    {...actions["tldreveal.toggle-autosave"]}
+                />
+            </TldrawUiMenuGroup>
+        </TldrawUiMenuSubmenu>
+    )
+}
+
+function CustomMainMenu() {
+    return (
+        <DefaultMainMenu>
+            <CustomFileSubmenu />
+            <EditSubmenu />
+			<ExportFileContentSubMenu />
+			<ExtrasGroup />
+			<PreferencesGroup />
+            <TldrawUiMenuGroup id="tldreveal-links">
+                <TldrawUiMenuItem
+                    id="github"
+                    label="GitHub"
+                    readonlyOk
+                    icon="github"
+                    onSelect={() => {
+                        window.open("https://github.com/arthurrump/tldreveal", "_blank")
+                    }} 
+                />
+            </TldrawUiMenuGroup>
+        </DefaultMainMenu>
+    )
+}
+
+function CustomQuickActions() {
+    const actions = useActions()
     return (
         <DefaultQuickActions>
-            <TldrawUiMenuItem id="close" icon="cross" onSelect={onClose} />
-            <span style={{transform: "rotate(180deg)"}}>
-                <TldrawUiMenuItem id="save" icon="share-2" onSelect={onSave} />
-            </span>
+            <TldrawUiMenuItem {...actions["tldreveal.close"]} />
             <DefaultQuickActionsContent />
         </DefaultQuickActions>
     )
@@ -101,6 +159,8 @@ export interface TldrevealOverlayProps {
 export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
     const [editor, setEditor] = useState<Editor | undefined>()
+
+    const filesystem = useFilesystem()
 
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -148,12 +208,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     // https://tldraw.dev/examples/data/assets/local-storage
     useLayoutEffect(() => {
-        let cleanup = () => {}
+        const storageKey = deckId => `TLDREVEAL_SNAPSHOT__${deckId}`
 
         if (deckId) {
-            const storageKey = `TLDREVEAL_SNAPSHOT__${deckId}`
-
-            const storedSnapshot = localStorage.getItem(storageKey)
+            const storedSnapshot = localStorage.getItem(storageKey(deckId))
             if (storedSnapshot) {
                 try {
                     const snapshot = JSON.parse(storedSnapshot)
@@ -162,38 +220,46 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     console.error("Failed to load tldreveal snapshot from local storage: ", error.message, error)
                 }
             }
-
-            const cleanupStoreListen = store.listen(
-                throttle(() => {
-                    const snapshot = store.getSnapshot()
-                    localStorage.setItem(storageKey, JSON.stringify(snapshot))
-                }, 500)
-            )
-
-            cleanup = () => {
-                cleanupStoreListen()
-            }
         }
+
+        const cleanupStoreListen = store.listen(
+            throttle(() => {
+                const snapshot = store.getSnapshot()
+                const snapshotJson = JSON.stringify(snapshot)
+                if (deckId) {
+                    localStorage.setItem(storageKey(deckId), snapshotJson)
+                }
+                if (filesystem.autosaveAvailable && filesystem.autosaveEnabled) {
+                    filesystem.autosave(new Blob([ snapshotJson ]))
+                }
+            }, 500)
+        )
 
         setIsShown(true)
 
-        return cleanup
+        return () => {
+            cleanupStoreListen()
+        }
     }, [ store ])
 
-    function onTldrawMount(editor: Editor) {
-        setEditor(editor)
-        editor.setCurrentTool("draw")
+    function initializeEditor(state = { editor }) {
+        state.editor.setCurrentTool("draw")
         // TODO: Set up initial style
         // for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
         //     if (sharedStyle.type === "shared") {
         //         editor.setStyleForNextShapes(styleProp, sharedStyle.value)
         //     }
         // }
-        editor.updateInstanceState({ 
+        state.editor.updateInstanceState({ 
             isDebugMode: false,
             exportBackground: false
         })
         syncEditor({ editor, currentSlide })
+    }
+
+    function onTldrawMount(editor: Editor) {
+        setEditor(editor)
+        initializeEditor({ editor })
     }
 
     useEffect(() => {
@@ -343,12 +409,73 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         syncEditor({ editor, currentSlide })
     }, [ editor, currentSlide ])
 
-    async function handleSave() {
-        const blob = serializeTldrawJsonBlob(store)
-        await fileSave(blob, { 
-            fileName: (deckId || "untitled") + TLDRAW_FILE_EXTENSION, 
-            extensions: [ TLDRAW_FILE_EXTENSION ]
-        })
+    const customTranslations = {
+        en: {
+            "tldreveal.menu.file": "File",
+            "tldreveal.action.close": "Exit drawing mode",
+            "tldreveal.action.open-file": "Open file",
+            "tldreveal.action.save-file": "Save file",
+            "tldreveal.preference.autosave": "Autosave",
+
+            // Set the default name for built-in export functions
+            "document.default-name": deckId || "unknown"
+        }
+    }
+
+    const customActions : TLUiActionsContextType = {
+        ["tldreveal.close"]: {
+            id: "tldreveal.close",
+            label: "tldreveal.action.close",
+            icon: "cross",
+            readonlyOk: true,
+            async onSelect(_source) {
+                setIsEditing(false)
+            }
+        },
+        ["tldreveal.open-file"]: {
+            id: "tldreveal.open-file",
+            label: "tldreveal.action.open-file",
+            kbd: "$o",
+            async onSelect(_source) {
+                let file: File
+                try {
+                    file = await filesystem.openFile({
+                        extensions: [ TLDREVEAL_FILE_EXTENSION ],
+                        multiple: false,
+                        description: "tldreveal project"
+                    })
+                } catch (error) {
+                    // user canceled
+                    return
+                }
+
+                const snapshot = JSON.parse(await file.text())
+                store.loadSnapshot(snapshot)
+                initializeEditor()
+            }
+        },
+        ["tldreveal.save-file"]: {
+            id: "tldreveal.save-file",
+            label: "tldreveal.action.save-file",
+            readonlyOk: true,
+            kbd: "$s",
+            async onSelect(_source) {
+                const blob = new Blob([ JSON.stringify(store.getSnapshot()) ])
+                filesystem.saveFile(blob, {
+                    fileName: (deckId || "untitled") + TLDREVEAL_FILE_EXTENSION, 
+                    extensions: [ TLDREVEAL_FILE_EXTENSION ]
+                })
+            }
+        },
+        ["tldreveal.toggle-autosave"]: {
+            id: "tldreveal.toggle-autosave",
+            label: "tldreveal.preference.autosave",
+            readonlyOk: true,
+            checkbox: true,
+            onSelect(_source) {
+                filesystem.toggleAutosave()
+            }
+        }
     }
 
     return (
@@ -358,23 +485,22 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             store={store}
             onMount={onTldrawMount}
             components={{
-                MenuPanel: null,
+                PageMenu: null,
+                MainMenu: CustomMainMenu,
                 ActionsMenu: CustomActionsMenu,
-                QuickActions: () => 
-                    <CustomQuickActions 
-                        onClose={() => setIsEditing(false)}
-                        onSave={handleSave} />
-                }}
-                overrides={{
-                    tools(editor, tools) {
-                        // Remove the keyboard shortcut for the hand tool
-                        tools.hand.kbd = undefined
-                        return tools
-                    },
-                    toolbar(editor, toolbar) {
-                        // Remove the hand tool from the toolbar
-                        const handIndex = toolbar.findIndex(t => t.id === "hand")
-                        if (handIndex !== -1)
+                QuickActions: CustomQuickActions
+            }}
+            overrides={{
+                translations: customTranslations,
+                tools(editor, tools) {
+                    // Remove the keyboard shortcut for the hand tool
+                    tools.hand.kbd = undefined
+                    return tools
+                },
+                toolbar(editor, toolbar) {
+                    // Remove the hand tool from the toolbar
+                    const handIndex = toolbar.findIndex(t => t.id === "hand")
+                    if (handIndex !== -1)
                         toolbar.splice(handIndex, 1)
                     return toolbar
                 },
@@ -387,7 +513,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     delete actions["zoom-to-fit"]
                     delete actions["zoom-to-selection"]
                     delete actions["back-to-content"]
-                    return actions
+                    return { ...actions, ...customActions }
                 }
             }}
             >
