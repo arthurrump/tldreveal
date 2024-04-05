@@ -47,6 +47,7 @@ import { defaultStyleProps, getTldrevealConfig } from "./config";
 // - Load saved document, via file picker and from url
 //   - Fix keyboard not working after opening a file
 //   - Fix sync after file opening
+// - Fix the undo/redo stack across pages
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
 // - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
@@ -293,11 +294,13 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         setCurrentSlide({ h: event.indexh, v: event.indexv })
     }
     
-    function handleSlidechanged(event) {
+    const handleSlidechanged = (state = { currentSlideId }) => event => {
         const currentTransition: string | undefined = 
             reveal.getConfig().transition 
             || event.currentSlide.getAttribute("data-transition")
-        if (currentTransition === "none" || currentTransition?.includes("none-in")) {
+        const noTransition = currentTransition === "none" || currentTransition?.includes("none-in")
+        const hasSameSlideId = getSlideId({ h: event.indexh, v: event.indexv }) === state.currentSlideId
+        if (noTransition || hasSameSlideId) {
             setCurrentSlide({ h: event.indexh, v: event.indexv })
         } else {
             container.classList.toggle("start-transition", true)
@@ -332,7 +335,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     useEffect(() => {
         reveal.on("ready", handleReady)
         // beforeslidechange
-        reveal.on("slidechanged", handleSlidechanged)
         reveal.on("slidetransitionend", handleSlidetransitionend)
         reveal.on("overviewshown", handleOverviewshown)
         reveal.on("overviewhidden", handleOverviewhidden)
@@ -340,13 +342,20 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         reveal.on("resumed", handleResumed)
         return () => {
             reveal.off("ready", handleReady)
-            reveal.off("slidechanged", handleSlidechanged)
             reveal.off("overviewshown", handleOverviewshown)
             reveal.off("overviewhidden", handleOverviewhidden)
             reveal.off("paused", handlePaused)
             reveal.off("resumed", handleResumed)
         }
     }, [])
+    
+    useEffect(() => {
+        const handleSlidechanged_ = handleSlidechanged({ currentSlideId })
+        reveal.on("slidechanged", handleSlidechanged_)
+        return () => {
+            reveal.off("slidechanged", handleSlidechanged_)
+        }
+    }, [ currentSlideId ])
 
     const handleResize = (state = { editor }) => {
         // Run both a throttled and debounced version: the throttled function
