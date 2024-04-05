@@ -3,7 +3,7 @@ import { fileSave, fileOpen } from "browser-fs-access"
 
 import { Api as RevealApi } from "reveal.js"
 
-import { 
+import {
     Box,
     Editor,
     Tldraw,
@@ -41,14 +41,13 @@ import { useAtom } from "@tldraw/state"
 import "tldraw/tldraw.css"
 
 import { debounce, makeInt } from "./util"
-import { getTldrevealConfig } from "./config";
+import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
 // - Load saved document, via file picker and from url
 //   - Fix keyboard not working after opening a file
 //   - Fix sync after file opening
 // - Somehow create overlaid pages for fragment navigation
-// - Configuration options for default styles (colour, stroke width, etc)
 // - Fix the overlay in scroll mode
 // - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
 
@@ -224,12 +223,11 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     function initializeEditor(state = { editor, currentSlide }) {
         state.editor.setCurrentTool("draw")
-        // TODO: Set up initial style
-        // for (const [ styleProp, sharedStyle ] of sharedStyles.entries()) {
-        //     if (sharedStyle.type === "shared") {
-        //         editor.setStyleForNextShapes(styleProp, sharedStyle.value)
-        //     }
-        // }
+        for (const style of Object.keys(config.defaultStyles)) {
+            if (config.defaultStyles[style]) {
+                state.editor.setStyleForNextShapes(defaultStyleProps[style], config.defaultStyles[style])
+            }
+        }
         state.editor.updateInstanceState({ 
             isDebugMode: false,
             exportBackground: false

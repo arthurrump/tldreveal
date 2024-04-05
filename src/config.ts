@@ -1,6 +1,43 @@
+import { 
+    TLDefaultColorStyle,
+    TLDefaultSizeStyle,
+    TLDefaultDashStyle,
+    TLDefaultFillStyle,
+    TLDefaultFontStyle, 
+    TLDefaultHorizontalAlignStyle,
+    TLDefaultVerticalAlignStyle,
+    DefaultColorStyle,
+    DefaultSizeStyle,
+    DefaultDashStyle,
+    DefaultFillStyle,
+    DefaultFontStyle,
+    DefaultHorizontalAlignStyle,
+    DefaultVerticalAlignStyle
+} from "tldraw"
+
 import { Api as RevealApi } from "reveal.js"
 
+export const defaultStyleProps = {
+    color: DefaultColorStyle,
+    size: DefaultSizeStyle,
+    dash: DefaultDashStyle,
+    fill: DefaultFillStyle,
+    font: DefaultFontStyle,
+    horizontalAlign: DefaultHorizontalAlignStyle,
+    verticalAlign: DefaultVerticalAlignStyle
+}
+
 export interface TldrevealConfig {
+    defaultStyles: {
+        color?: TLDefaultColorStyle
+        size?: TLDefaultSizeStyle
+        dash?: TLDefaultDashStyle
+        fill?: TLDefaultFillStyle
+        font?: TLDefaultFontStyle
+        horizontalAlign?: TLDefaultHorizontalAlignStyle
+        verticalAlign?: TLDefaultVerticalAlignStyle
+    }
+
     isDarkMode: boolean
     automaticDarkMode: boolean
 }
@@ -14,6 +51,7 @@ declare global {
 }
 
 export const defaultTldrevealConfig: TldrevealConfig = {
+    defaultStyles: {},
     isDarkMode: true,
     automaticDarkMode: true
 }
