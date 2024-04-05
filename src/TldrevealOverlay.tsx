@@ -31,6 +31,8 @@ import {
     ExportFileContentSubMenu,
     ExtrasGroup,
     PreferencesGroup,
+    transact,
+    TLShapeId,
 } from "tldraw"
 
 import "tldraw/tldraw.css"
@@ -41,22 +43,32 @@ import { debounce, makeInt } from "./util"
 // - Load saved document, via file picker and from url
 //   - Fix keyboard not working after opening a file
 //   - Fix sync after file opening
+// - Don't create new pages for slides without drawings, to not run into tldraws 40 page max page limit too quickly on a large deck
 // - Somehow create overlaid pages for fragment navigation
 // - Configuration options for default styles (colour, stroke width, etc)
-// - Optional button to start drawing without a keyboard
-// - Quick way to clear the current slide
-// - Quick way to clear the entire presentation
 // - Fix the overlay in scroll mode
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
-function CustomFileSubmenu() {
+function FileSubmenu() {
     const actions = useActions()
     return (
         <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
-            <TldrawUiMenuGroup id="tldreveal-file-actions">
+            <TldrawUiMenuGroup id="tldreveal-file-group">
                 <TldrawUiMenuItem {...actions["tldreveal.open-file"]} />
                 <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
+            </TldrawUiMenuGroup>
+        </TldrawUiMenuSubmenu>
+    )
+}
+
+function ClearSubmenu() {
+    const actions = useActions()
+    return (
+        <TldrawUiMenuSubmenu id="tldreveal-clear" label="tldreveal.menu.clear">
+            <TldrawUiMenuGroup id="tldreveal-clear-group">
+                <TldrawUiMenuItem {...actions["tldreveal.clear-page"]} />
+                <TldrawUiMenuItem {...actions["tldreveal.clear-deck"]} />
             </TldrawUiMenuGroup>
         </TldrawUiMenuSubmenu>
     )
@@ -65,7 +77,8 @@ function CustomFileSubmenu() {
 function CustomMainMenu() {
     return (
         <DefaultMainMenu>
-            <CustomFileSubmenu />
+            <FileSubmenu />
+            <ClearSubmenu />
             <EditSubmenu />
 			<ExportFileContentSubMenu />
 			<ExtrasGroup />
@@ -384,9 +397,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const customTranslations = {
         en: {
             "tldreveal.menu.file": "File",
+            "tldreveal.menu.clear": "Clear",
             "tldreveal.action.close": "Exit drawing mode",
             "tldreveal.action.open-file": "Open file",
             "tldreveal.action.save-file": "Save file",
+            "tldreveal.action.clear-page": "Clear current slide",
+            "tldreveal.action.clear-deck": "Clear deck",
 
             // Set the default name for built-in export functions
             "document.default-name": deckId || "unknown"
@@ -437,6 +453,39 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 await fileSave(blob, {
                     fileName: (deckId || "untitled") + TLDREVEAL_FILE_EXTENSION, 
                     extensions: [ TLDREVEAL_FILE_EXTENSION ]
+                })
+            }
+        },
+        ["tldreveal.clear-page"]: {
+            id: "tldreveal.clear-page",
+            label: "tldreveal.action.clear-page",
+            async onSelect(_source) {
+                transact(() => {
+                    // Delete all shapes on the current page
+                    editor.deleteShapes(editor.getCurrentPageShapes())
+                })
+            }
+        },
+        ["tldreveal.clear-deck"]: {
+            id: "tldreveal.clear-deck",
+            label: "tldreveal.action.clear-deck",
+            async onSelect(_source) {
+                transact(() => {
+                    // Find all shapes from the store and delete them
+                    const allShapeIds = 
+                        store.allRecords()
+                            .filter(record => record.typeName === "shape")
+                            .map(record => record.id as TLShapeId)
+                    editor.deleteShapes(allShapeIds)
+
+                    // Delete all assets
+                    editor.deleteAssets(editor.getAssets())
+
+                    // Delete all pages except the current
+                    const currentPage = editor.getCurrentPage()
+                    for (const page of editor.getPages()) {
+                        if (page.id !== currentPage.id) editor.deletePage(page)
+                    }
                 })
             }
         }
