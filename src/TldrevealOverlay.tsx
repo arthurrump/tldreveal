@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { fileSave, fileOpen } from "browser-fs-access"
+import { fileSave } from "browser-fs-access"
 
 import { Api as RevealApi } from "reveal.js"
 
@@ -44,9 +44,7 @@ import { debounce, makeInt } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
-// - Load saved document, via file picker and from url
-//   - Fix keyboard not working after opening a file
-//   - Fix sync after file opening
+// - Load saved document from url
 // - Fix the undo/redo stack across pages
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
@@ -54,15 +52,13 @@ import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
-function FileSubmenu() {
+function FileMenuGroup() {
     const actions = useActions()
     return (
-        <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
             <TldrawUiMenuGroup id="tldreveal-file-group">
-                <TldrawUiMenuItem {...actions["tldreveal.open-file"]} />
                 <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
+            {/* <TldrawUiMenuItem {...actions["tldreveal.toggle-use-localstorage"]} /> */}
             </TldrawUiMenuGroup>
-        </TldrawUiMenuSubmenu>
     )
 }
 
@@ -79,24 +75,17 @@ function ClearSubmenu() {
 }
 
 function CustomMainMenu() {
+    const actions = useActions()
     return (
         <DefaultMainMenu>
-            <FileSubmenu />
+            <FileMenuGroup />
             <ClearSubmenu />
             <EditSubmenu />
 			<ExportFileContentSubMenu />
 			<ExtrasGroup />
 			<PreferencesGroup />
-            <TldrawUiMenuGroup id="tldreveal-links">
-                <TldrawUiMenuItem
-                    id="github"
-                    label="GitHub"
-                    readonlyOk
-                    icon="github"
-                    onSelect={() => {
-                        window.open("https://github.com/arthurrump/tldreveal", "_blank")
-                    }} 
-                />
+            <TldrawUiMenuGroup id="close">
+                <TldrawUiMenuItem {...actions["tldreveal.close"]} />
             </TldrawUiMenuGroup>
         </DefaultMainMenu>
     )
@@ -457,30 +446,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             readonlyOk: true,
             async onSelect(_source) {
                 setIsEditing(false)
-            }
-        },
-        ["tldreveal.open-file"]: {
-            id: "tldreveal.open-file",
-            label: "tldreveal.action.open-file",
-            kbd: "$o",
-            async onSelect(_source) {
-                let file: File
-                try {
-                    file = await fileOpen({
-                        extensions: [ TLDREVEAL_FILE_EXTENSION ],
-                        multiple: false,
-                        description: "tldreveal project"
-                    })
-                } catch (error) {
-                    // user canceled
-                    return
-                }
-
-                const snapshot = JSON.parse(await file.text())
-                store.loadSnapshot(snapshot)
-                initializeEditor()
-                // TODO: Fix this properly
-                setTimeout(() => syncEditorBounds(), 500)
             }
         },
         ["tldreveal.save-file"]: {
