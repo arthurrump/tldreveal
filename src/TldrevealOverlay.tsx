@@ -43,7 +43,7 @@ import { useAtom } from "@tldraw/state"
 
 import "tldraw/tldraw.css"
 
-import { debounce, makeInt } from "./util"
+import { debounce, makeInt, parseOptionalBoolean } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
@@ -148,6 +148,17 @@ export interface TldrevealOverlayProps {
 export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const config = getTldrevealConfig(reveal)
 
+    function tryGetId(element: HTMLElement) : string | undefined {
+        return element.getAttribute("data-tlid") || element.id || undefined
+    }
+
+    const deckId : string | undefined = useMemo(() => 
+        tryGetId(reveal.getSlidesElement()) || tryGetId(reveal.getRevealElement())
+    , [])
+
+    const saveToLocalStorageKey = deckId && `TLDREVEAL_SAVE_TO_LOCALSTORAGE__${deckId}`
+    const localStorageKey = deckId && `TLDREVEAL_SNAPSHOT__${deckId}`
+
     const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
     const [editor, setEditor] = useState<Editor | undefined>()
 
@@ -156,7 +167,13 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const userPreferences = useAtom<TLUserPreferences>("userPreferences", { id: "tldreveal", isDarkMode: config.isDarkMode })
     const [isolatedUser] = useState(() => createTLUser({ userPreferences, setUserPreferences: userPreferences.set }))
 
-    const [saveToLocalStorage, setSaveToLocalStorage] = useState(config.useLocalStorage)
+    const [saveToLocalStorage, setSaveToLocalStorage_] = 
+        useState(parseOptionalBoolean(localStorage.getItem(saveToLocalStorageKey)) ?? config.useLocalStorage)
+    
+    function setSaveToLocalStorage(value: boolean) {
+        setSaveToLocalStorage_(value)
+        localStorage.setItem(saveToLocalStorageKey, value ? "true" : "false")
+    }
     
     const [isReady, setIsReady] = useState(false)
     const [isShown, setIsShown] = useState(true)
@@ -167,16 +184,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const slideWidth = makeInt(reveal.getConfig().width)
     const slideHeight = makeInt(reveal.getConfig().height)
     const bounds = new Box(0, 0, slideWidth, slideHeight)
-
-    function tryGetId(element: HTMLElement) : string | undefined {
-        return element.getAttribute("data-tlid") || element.id || undefined
-    }
-
-    const deckId : string | undefined = useMemo(() => 
-        tryGetId(reveal.getSlidesElement()) || tryGetId(reveal.getRevealElement())
-    , [])
-
-    const localStorageKey = deckId && `TLDREVEAL_SNAPSHOT__${deckId}`
 
     function getSlideId(index: { h: number, v: number }) : string {
         const slideElement = reveal.getSlide(index.h, index.v)
