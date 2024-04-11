@@ -42,6 +42,8 @@ export interface TldrevealConfig {
 
     isDarkMode: boolean
     automaticDarkMode: boolean
+
+    useLocalStorage: boolean
 }
 
 declare global {
@@ -56,7 +58,8 @@ export const defaultTldrevealConfig: TldrevealConfig = {
     defaultStyles: {},
     disableLayoutWarning: true,
     isDarkMode: true,
-    automaticDarkMode: true
+    automaticDarkMode: true,
+    useLocalStorage: true
 }
 
 export function getTldrevealConfig(reveal: RevealApi) {

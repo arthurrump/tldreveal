@@ -35,6 +35,8 @@ import {
     TLShapeId,
     createTLUser,
     TLUserPreferences,
+    TldrawUiMenuCheckboxItem,
+    TLStore,
 } from "tldraw"
 import { useAtom } from "@tldraw/state"
 
@@ -52,14 +54,30 @@ import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
-function FileMenuGroup() {
+function FileSubmenu() {
     const actions = useActions()
+
+    const mainGroup =
+        <TldrawUiMenuGroup  id="tldreveal-file-main">
+            <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
+        </TldrawUiMenuGroup>
+
+    // TODO: Don't pass state through actions
+    if (!actions["tldreveal.toggle-save-to-localstorage"].disabled) {
     return (
-            <TldrawUiMenuGroup id="tldreveal-file-group">
-                <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
-            {/* <TldrawUiMenuItem {...actions["tldreveal.toggle-use-localstorage"]} /> */}
+            <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
+                {mainGroup}
+                <TldrawUiMenuGroup id="tldreveal-file-localstorage">
+                    <TldrawUiMenuCheckboxItem 
+                        {...actions["tldreveal.toggle-save-to-localstorage"]}
+                    />
+                    <TldrawUiMenuItem {...actions["tldreveal.clear-localstorage"]} />
             </TldrawUiMenuGroup>
+            </TldrawUiMenuSubmenu>
     )
+    } else {
+        return mainGroup
+    }
 }
 
 function ClearSubmenu() {
@@ -78,7 +96,7 @@ function CustomMainMenu() {
     const actions = useActions()
     return (
         <DefaultMainMenu>
-            <FileMenuGroup />
+            <FileSubmenu />
             <ClearSubmenu />
             <EditSubmenu />
 			<ExportFileContentSubMenu />
@@ -133,6 +151,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const userPreferences = useAtom<TLUserPreferences>("userPreferences", { id: "tldreveal", isDarkMode: config.isDarkMode })
     const [isolatedUser] = useState(() => createTLUser({ userPreferences, setUserPreferences: userPreferences.set }))
 
+    const [saveToLocalStorage, setSaveToLocalStorage] = useState(config.useLocalStorage)
+
     const [isShown, setIsShown] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 
@@ -149,6 +169,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const deckId : string | undefined = useMemo(() => 
         tryGetId(reveal.getSlidesElement()) || tryGetId(reveal.getRevealElement())
     , [])
+
+    const localStorageKey = deckId && `TLDREVEAL_SNAPSHOT__${deckId}`
 
     function getSlideId(index: { h: number, v: number }) : string {
         const slideElement = reveal.getSlide(index.h, index.v)
@@ -177,14 +199,20 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
 
+    function getTimestampedSnapshot(store: TLStore) {
+        return {
+            timestamp: Date.now(),
+            ...store.getSnapshot()
+        }
+    }
+
     // https://tldraw.dev/examples/data/assets/local-storage
     useLayoutEffect(() => {
-        let cleanup = () => {}
+        // TODO: Load the data from url and localStorage, choose the appropriate
+        // one and load it into the store, then start the editor
 
-        if (deckId) {
-            const storageKey = `TLDREVEAL_SNAPSHOT__${deckId}`
-
-            const storedSnapshot = localStorage.getItem(storageKey)
+        if (localStorageKey) {
+            const storedSnapshot = localStorage.getItem(localStorageKey)
             if (storedSnapshot) {
                 try {
                     const snapshot = JSON.parse(storedSnapshot)
@@ -193,23 +221,29 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     console.error("Failed to load tldreveal snapshot from local storage: ", error.message, error)
                 }
             }
-
-            const cleanupStoreListen = store.listen(
-                throttle(() => {
-                    const snapshot = store.getSnapshot()
-                    localStorage.setItem(storageKey, JSON.stringify(snapshot))
-                }, 500)
-            )
-
-            cleanup = () => {
-                cleanupStoreListen()
-            }
         }
 
         setIsShown(true)
-
-        return cleanup
     }, [ store ])
+
+    useEffect(() => {
+        // If we can and want to use local storage, then listen to changes of
+        // the store and save them
+        if (localStorageKey && saveToLocalStorage) {
+            const cleanupStoreListen = store.listen(
+                throttle(() => {
+                    const snapshot = getTimestampedSnapshot(store)
+                    localStorage.setItem(localStorageKey, JSON.stringify(snapshot))
+                }, 500)
+            )
+
+            return () => {
+                cleanupStoreListen()
+            }
+        } else {
+            // TODO: Configure window.onbeforeunload to preventDefault() when dirty
+        }
+    }, [ store, saveToLocalStorage ])
 
     function initializeEditor(state = { editor, currentSlide }) {
         state.editor.setCurrentTool("draw")
@@ -428,10 +462,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             "tldreveal.menu.file": "File",
             "tldreveal.menu.clear": "Clear",
             "tldreveal.action.close": "Exit drawing mode",
-            "tldreveal.action.open-file": "Open file",
             "tldreveal.action.save-file": "Save file",
+            "tldreveal.action.clear-localstorage": "Clear browser storage",
             "tldreveal.action.clear-page": "Clear current slide",
             "tldreveal.action.clear-deck": "Clear deck",
+
+            "tldreveal.options.save-to-localstorage": "Save in browser",
 
             // Set the default name for built-in export functions
             "document.default-name": deckId || "unknown"
@@ -454,11 +490,31 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             readonlyOk: true,
             kbd: "$s",
             async onSelect(_source) {
-                const blob = new Blob([ JSON.stringify(store.getSnapshot()) ])
+                const blob = new Blob([ JSON.stringify(getTimestampedSnapshot(store)) ])
                 await fileSave(blob, {
                     fileName: (deckId || "untitled") + TLDREVEAL_FILE_EXTENSION, 
                     extensions: [ TLDREVEAL_FILE_EXTENSION ]
                 })
+            }
+        },
+        ["tldreveal.toggle-save-to-localstorage"]: {
+            id: "tldreveal.toggle-save-to-localstorage",
+            label: "tldreveal.options.save-to-localstorage",
+            readonlyOk: true,
+            checkbox: true,
+            checked: saveToLocalStorage,
+            disabled: localStorageKey === undefined,
+            async onSelect(_source) {
+                setSaveToLocalStorage(localStorageKey && !saveToLocalStorage)
+            }
+        },
+        ["tldreveal.clear-localstorage"]: {
+            id: "tldreveal.clear-localstorage",
+            label: "tldreveal.action.clear-localstorage",
+            async onSelect(_source) {
+                if (localStorageKey) {
+                    localStorage.removeItem(localStorageKey)
+                }
             }
         },
         ["tldreveal.clear-page"]: {
