@@ -44,6 +44,7 @@ export interface TldrevealConfig {
     automaticDarkMode: boolean
 
     useLocalStorage: boolean
+    snapshotUri: false | "auto" | { uri: string }
 }
 
 declare global {
@@ -59,7 +60,8 @@ export const defaultTldrevealConfig: TldrevealConfig = {
     disableLayoutWarning: true,
     isDarkMode: true,
     automaticDarkMode: true,
-    useLocalStorage: true
+    useLocalStorage: true,
+    snapshotUri: false
 }
 
 export function getTldrevealConfig(reveal: RevealApi) {

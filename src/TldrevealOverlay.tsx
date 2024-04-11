@@ -37,6 +37,7 @@ import {
     TLUserPreferences,
     TldrawUiMenuCheckboxItem,
     TLStore,
+    TLStoreSnapshot,
 } from "tldraw"
 import { useAtom } from "@tldraw/state"
 
@@ -46,7 +47,6 @@ import { debounce, makeInt } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
-// - Load saved document from url
 // - Fix the undo/redo stack across pages
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
@@ -64,7 +64,7 @@ function FileSubmenu() {
 
     // TODO: Don't pass state through actions
     if (!actions["tldreveal.toggle-save-to-localstorage"].disabled) {
-    return (
+        return (
             <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
                 {mainGroup}
                 <TldrawUiMenuGroup id="tldreveal-file-localstorage">
@@ -72,9 +72,9 @@ function FileSubmenu() {
                         {...actions["tldreveal.toggle-save-to-localstorage"]}
                     />
                     <TldrawUiMenuItem {...actions["tldreveal.clear-localstorage"]} />
-            </TldrawUiMenuGroup>
+                </TldrawUiMenuGroup>
             </TldrawUiMenuSubmenu>
-    )
+        )
     } else {
         return mainGroup
     }
@@ -152,8 +152,9 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const [isolatedUser] = useState(() => createTLUser({ userPreferences, setUserPreferences: userPreferences.set }))
 
     const [saveToLocalStorage, setSaveToLocalStorage] = useState(config.useLocalStorage)
-
-    const [isShown, setIsShown] = useState(false)
+    
+    const [isReady, setIsReady] = useState(false)
+    const [isShown, setIsShown] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
 
     const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>(reveal.getIndices())
@@ -199,31 +200,85 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
 
-    function getTimestampedSnapshot(store: TLStore) {
+    function getTimestampedSnapshot(store: TLStore) : TLStoreSnapshot & { timestamp: number } {
         return {
             timestamp: Date.now(),
             ...store.getSnapshot()
         }
     }
 
-    // https://tldraw.dev/examples/data/assets/local-storage
-    useLayoutEffect(() => {
-        // TODO: Load the data from url and localStorage, choose the appropriate
-        // one and load it into the store, then start the editor
-
+    async function loadInitial(store: TLStore) {
+        let localStorageSnapshot: (TLStoreSnapshot & { timestamp: number }) | undefined
         if (localStorageKey) {
-            const storedSnapshot = localStorage.getItem(localStorageKey)
-            if (storedSnapshot) {
-                try {
-                    const snapshot = JSON.parse(storedSnapshot)
-                    store.loadSnapshot(snapshot)
-                } catch (error: any) {
-                    console.error("Failed to load tldreveal snapshot from local storage: ", error.message, error)
-                }
+            const snapshotJson = localStorage.getItem(localStorageKey)
+            if (snapshotJson) {
+                localStorageSnapshot = JSON.parse(snapshotJson)
             }
         }
 
-        setIsShown(true)
+        let uriSnapshot: (TLStoreSnapshot & { timestamp: number }) | undefined
+        if (config.snapshotUri) {
+            let uri
+            if (config.snapshotUri === "auto") {
+                const path = window.location.pathname
+                const ext = [ ".html", ".htm" ].find(ext => path.endsWith(ext))
+                if (ext) {
+                    uri = path.substring(0, path.length - ext.length) + ".tldrev"
+                } else {
+                    uri = "index.tldrev"
+                }
+            } else {
+                uri = config.snapshotUri.uri
+            }
+
+            try {
+                const res = await fetch(uri)
+                if (res.ok) {
+                    const snapshotJson = await res.text()
+                    try {
+                        const snapshot = JSON.parse(snapshotJson)
+                        if (!(snapshot.timestamp && snapshot.store && snapshot.schema)) {
+                            console.warn("Received invalid snapshot from", uri)
+                        } else {
+                            uriSnapshot = snapshot
+                        }
+                    } catch {
+                        console.warn("Received invalid snapshot from", uri)
+                    }
+                } else {
+                    if (config.snapshotUri === "auto") {
+                        console.log("No saved drawings found at auto-detected uri:", uri, "Got status:", res.status, res.statusText)
+                    } else {
+                        console.warn("Failed to load saved drawings from", uri, "Got status:", res.status, res.statusText)
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to fetch drawings from uri. Error:", err)
+            }
+        }
+
+        let snapshot: (TLStoreSnapshot & { timestamp: number }) | undefined
+        if (localStorageSnapshot && uriSnapshot) {
+            if (localStorageSnapshot.timestamp >= uriSnapshot.timestamp) {
+                snapshot = localStorageSnapshot
+            } else {
+                // TODO: dialog, for now always load newest
+                snapshot = uriSnapshot
+            }
+        } else {
+            snapshot = localStorageSnapshot || uriSnapshot
+        }
+
+        if (snapshot) {
+            store.loadSnapshot(snapshot)
+        }
+
+        setIsReady(true)
+    }
+
+    // https://tldraw.dev/examples/data/assets/local-storage
+    useLayoutEffect(() => {
+        loadInitial(store)
     }, [ store ])
 
     useEffect(() => {
@@ -240,8 +295,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             return () => {
                 cleanupStoreListen()
             }
-        } else {
-            // TODO: Configure window.onbeforeunload to preventDefault() when dirty
         }
     }, [ store, saveToLocalStorage ])
 
@@ -490,8 +543,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             readonlyOk: true,
             kbd: "$s",
             async onSelect(_source) {
-                const blob = new Blob([ JSON.stringify(getTimestampedSnapshot(store)) ])
-                await fileSave(blob, {
+                const snapshot = getTimestampedSnapshot(store)
+                await fileSave(new Blob([ JSON.stringify(snapshot) ]), {
                     fileName: (deckId || "untitled") + TLDREVEAL_FILE_EXTENSION, 
                     extensions: [ TLDREVEAL_FILE_EXTENSION ]
                 })
@@ -513,6 +566,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             label: "tldreveal.action.clear-localstorage",
             async onSelect(_source) {
                 if (localStorageKey) {
+                    setSaveToLocalStorage(false)
                     localStorage.removeItem(localStorageKey)
                 }
             }
@@ -552,46 +606,48 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }
 
-    return (
-        <Tldraw
-            forceMobile
-            hideUi={!isEditing}
-            store={store}
-            user={isolatedUser}
-            onMount={onTldrawMount}
-            components={{
-                PageMenu: null,
-                MainMenu: CustomMainMenu,
-                ActionsMenu: CustomActionsMenu,
-                QuickActions: CustomQuickActions
-            }}
-            overrides={{
-                translations: customTranslations,
-                tools(editor, tools) {
-                    // Remove the keyboard shortcut for the hand tool
-                    tools.hand.kbd = undefined
-                    return tools
-                },
-                toolbar(editor, toolbar) {
-                    // Remove the hand tool from the toolbar
-                    const handIndex = toolbar.findIndex(t => t.id === "hand")
-                    if (handIndex !== -1)
-                        toolbar.splice(handIndex, 1)
-                    return toolbar
-                },
-                // Remove actions related to zooming
-                actions(editor, actions) {
-                    delete actions["select-zoom-tool"]
-                    delete actions["zoom-in"]
-                    delete actions["zoom-out"]
-                    delete actions["zoom-to-100"]
-                    delete actions["zoom-to-fit"]
-                    delete actions["zoom-to-selection"]
-                    delete actions["back-to-content"]
-                    return { ...actions, ...customActions }
-                }
-            }}
-            >
-        </Tldraw>
-    )
+    if (isReady) {
+        return (
+            <Tldraw
+                forceMobile
+                hideUi={!isEditing}
+                store={store}
+                user={isolatedUser}
+                onMount={onTldrawMount}
+                components={{
+                    PageMenu: null,
+                    MainMenu: CustomMainMenu,
+                    ActionsMenu: CustomActionsMenu,
+                    QuickActions: CustomQuickActions
+                }}
+                overrides={{
+                    translations: customTranslations,
+                    tools(editor, tools) {
+                        // Remove the keyboard shortcut for the hand tool
+                        tools.hand.kbd = undefined
+                        return tools
+                    },
+                    toolbar(editor, toolbar) {
+                        // Remove the hand tool from the toolbar
+                        const handIndex = toolbar.findIndex(t => t.id === "hand")
+                        if (handIndex !== -1)
+                            toolbar.splice(handIndex, 1)
+                        return toolbar
+                    },
+                    // Remove actions related to zooming
+                    actions(editor, actions) {
+                        delete actions["select-zoom-tool"]
+                        delete actions["zoom-in"]
+                        delete actions["zoom-out"]
+                        delete actions["zoom-to-100"]
+                        delete actions["zoom-to-fit"]
+                        delete actions["zoom-to-selection"]
+                        delete actions["back-to-content"]
+                        return { ...actions, ...customActions }
+                    }
+                }}
+                >
+            </Tldraw>
+        )
+    }
 }

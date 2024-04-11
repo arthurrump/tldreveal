@@ -12,6 +12,7 @@ Reveal.initialize({
     scrollActivationWidth: null,
     plugins: [ Tldreveal, RevealHighlight ],
     tldreveal: {
-        isDarkMode: false
+        isDarkMode: false,
+        snapshotUri: "auto"
     }
 })
