@@ -47,7 +47,6 @@ import { debounce, makeInt, parseOptionalBoolean } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
-// - Fix the undo/redo stack across pages
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
 // - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
@@ -495,6 +494,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     state.editor.getCurrentPageShapeIds().size === 0
 
                 state.editor.setCurrentPage(pageId)
+                // Reset undo/redo to prevent undoing changes on other pages
+                state.editor.history.clear()
 
                 if (deleteOldCurrent) {
                     state.editor.deletePage(oldCurrentPageId)
