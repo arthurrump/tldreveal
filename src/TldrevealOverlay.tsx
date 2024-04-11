@@ -54,7 +54,12 @@ import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
 
-function FileSubmenu() {
+interface FileSubmenuProps {
+    canUseLocalStorage: boolean
+    saveToLocalStorage: boolean
+}
+
+function FileSubmenu({ canUseLocalStorage, saveToLocalStorage }: FileSubmenuProps) {
     const actions = useActions()
 
     const mainGroup =
@@ -62,13 +67,13 @@ function FileSubmenu() {
             <TldrawUiMenuItem {...actions["tldreveal.save-file"]} />
         </TldrawUiMenuGroup>
 
-    // TODO: Don't pass state through actions
-    if (!actions["tldreveal.toggle-save-to-localstorage"].disabled) {
+    if (canUseLocalStorage) {
         return (
             <TldrawUiMenuSubmenu id="tldreveal-file" label="tldreveal.menu.file">
                 {mainGroup}
                 <TldrawUiMenuGroup id="tldreveal-file-localstorage">
-                    <TldrawUiMenuCheckboxItem 
+                    <TldrawUiMenuCheckboxItem
+                        checked={saveToLocalStorage}
                         {...actions["tldreveal.toggle-save-to-localstorage"]}
                     />
                     <TldrawUiMenuItem {...actions["tldreveal.clear-localstorage"]} />
@@ -92,11 +97,11 @@ function ClearSubmenu() {
     )
 }
 
-function CustomMainMenu() {
+function CustomMainMenu({ fileProps }: { fileProps: FileSubmenuProps }) {
     const actions = useActions()
     return (
         <DefaultMainMenu>
-            <FileSubmenu />
+            <FileSubmenu {...fileProps} />
             <ClearSubmenu />
             <EditSubmenu />
 			<ExportFileContentSubMenu />
@@ -555,8 +560,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             label: "tldreveal.options.save-to-localstorage",
             readonlyOk: true,
             checkbox: true,
-            checked: saveToLocalStorage,
-            disabled: localStorageKey === undefined,
             async onSelect(_source) {
                 setSaveToLocalStorage(localStorageKey && !saveToLocalStorage)
             }
@@ -616,7 +619,12 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 onMount={onTldrawMount}
                 components={{
                     PageMenu: null,
-                    MainMenu: CustomMainMenu,
+                    MainMenu: () => CustomMainMenu({ 
+                        fileProps: { 
+                            canUseLocalStorage: localStorageKey !== undefined, 
+                            saveToLocalStorage
+                        }
+                    }),
                     ActionsMenu: CustomActionsMenu,
                     QuickActions: CustomQuickActions
                 }}
