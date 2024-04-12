@@ -41,8 +41,6 @@ import {
 } from "tldraw"
 import { useAtom } from "@tldraw/state"
 
-import "tldraw/tldraw.css"
-
 import { debounce, makeInt, parseOptionalBoolean } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
