@@ -23,7 +23,7 @@ And add the script in the `body`, before the initialization script:
     Reveal.initialize({
         // tldreveal does not support scroll view
         scrollActivationWidth: undefined,
-        plugins: [ Tldreveal ]
+        plugins: [ Tldreveal.Tldreveal() ]
     })
 </script>
 ```

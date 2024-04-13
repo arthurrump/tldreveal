@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple tldreveal Demo</title>
+
+    <!-- 
+        Example for a simple single file slidedeck that inludes all bundled dependencies.
+        Replace node_modules/ with https://unpkg.com/ to use without npm.
+    -->
+
+    <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css" />
+    <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/black.css" />
+
+    <link rel="stylesheet" href="node_modules/tldreveal/dist/bundle/index.css" />
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <section>
+                <h1>tldreveal</h1>
+                <p>Draw on your slides with three lines of code</p>
+            </section>
+            <section data-background="white">
+                <h1>It's blindingly bright!</h1>
+            </section>
+        </div>
+    </div>
+
+    <script src="node_modules/reveal.js/dist/reveal.js"></script>
+    <script src="node_modules/tldreveal/dist/bundle/index.js"></script>
+    <script>
+        // Initialize Reveal.js with the Tldreveal plugin
+        Reveal.initialize({
+            // tldreveal does not support scroll view
+            scrollActivationWidth: undefined,
+            plugins: [ Tldreveal.Tldreveal() ]
+        })
+    </script>
+</body>
+</html>
