@@ -35,6 +35,7 @@ build({
 build({
     ...commonConfig,
     format: "iife",
+    globalName: "Tldreveal",
     // Do include dependencies here, except for Reveal.js
     external: [ "reveal.js" ],
     outfile: "./dist/bundle/index.js",
