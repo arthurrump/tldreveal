@@ -13,12 +13,15 @@
   "types": "./dist/index.d.ts",
   "files": [
     "/src",
-    "/dist"
+    "/dist",
+    "README.md"
   ],
   "scripts": {
     "build": "npm run clean && node build.js && tsc --emitDeclarationOnly --outDir dist",
     "clean": "rimraf ./dist",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prepack": "cp ../README.md README.md",
+    "postpack": "rm README.md"
   },
   "devDependencies": {
     "@types/react": "^18.2.73",
