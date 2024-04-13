@@ -4,21 +4,16 @@
     "reveal",
     "tldraw"
   ],
-  "version": "1.0.0",
+  "version": "0.0.1",
   "author": "Arthur Rump (https://arthurrump.com)",
   "license": "MPL-2.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/arthurrump/tldreveal"
-  },
+  "repository": "github:arthurrump/tldreveal",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "package.json",
-    "README.md",
-    "LICENSE"
+    "/src",
+    "/dist"
   ],
   "scripts": {
     "build": "npm run clean && node build.js && tsc --emitDeclarationOnly --outDir dist",
