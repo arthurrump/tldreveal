@@ -25,8 +25,9 @@
     --color-background: rgba(255, 255, 255, 0);
 }
 
-/* Place the tldraw canvas according to slide size and whether the center option
-   is enabled or disabled. */
+/* Set the canvas size according to slide size and position it at the same place
+as the slides element. Note that we don't scale the canvas like the slides
+element is scaled, because that trips up tldraw. */
 .reveal .tldreveal .tl-canvas {
     width: calc(var(--slide-width) * var(--slide-scale));
     height: calc(var(--slide-height) * var(--slide-scale));
@@ -34,12 +35,8 @@
     margin: 0;
 
     position: absolute;
-    top: 0;
-    left: calc((100vw - var(--slide-width) * var(--slide-scale)) / 2);
-}
-
-.reveal.center .tldreveal .tl-canvas {
-    top: calc((100vh - var(--slide-height) * var(--slide-scale)) / 2);
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
 }
 
 /* Slide transition animation styles */
