@@ -35,7 +35,8 @@ build({
 build({
     ...commonConfig,
     format: "iife",
-    // Do include dependencies here
+    // Do include dependencies here, except for Reveal.js
+    external: [ "reveal.js" ],
     outfile: "./dist/bundle/index.js",
     target: [ "es2016", "chrome114", "firefox115" ],
     footer: {
