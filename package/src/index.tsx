@@ -27,7 +27,7 @@ function init(reveal: RevealApi) {
         )
     }
 
-    if (reveal.getConfig().disableLayout) {
+    if (reveal.getConfig().disableLayout && reveal.getConfig().tldreveal.disableLayoutWarning) {
         console.warn(
             "tldreveal assumes default Reveal.js layout to scale drawings with the slides.",
             "If you use manual positioning for your slides, you should manually position the .tl-canvas element accordingly.",
