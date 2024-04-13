@@ -4,7 +4,7 @@
     "reveal",
     "tldraw"
   ],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Arthur Rump (https://arthurrump.com)",
   "license": "MPL-2.0",
   "repository": "github:arthurrump/tldreveal",
