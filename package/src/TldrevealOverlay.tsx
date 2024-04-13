@@ -226,9 +226,9 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
 
         let uriSnapshot: (TLStoreSnapshot & { timestamp: number }) | undefined
-        if (config.snapshotUri) {
+        if (config.snapshotUrl) {
             let uri
-            if (config.snapshotUri === "auto") {
+            if (config.snapshotUrl === "auto") {
                 const path = window.location.pathname
                 const ext = [ ".html", ".htm" ].find(ext => path.endsWith(ext))
                 if (ext) {
@@ -237,7 +237,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                     uri = "index.tldrev"
                 }
             } else {
-                uri = config.snapshotUri.uri
+                uri = config.snapshotUrl.url
             }
 
             try {
@@ -255,7 +255,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                         console.warn("Received invalid snapshot from", uri)
                     }
                 } else {
-                    if (config.snapshotUri === "auto") {
+                    if (config.snapshotUrl === "auto") {
                         console.log("No saved drawings found at auto-detected uri:", uri, "Got status:", res.status, res.statusText)
                     } else {
                         console.warn("Failed to load saved drawings from", uri, "Got status:", res.status, res.statusText)

@@ -17,6 +17,6 @@ Reveal.initialize({
     plugins: [ Tldreveal, RevealMarkdown, RevealHighlight ],
     tldreveal: {
         isDarkMode: false,
-        snapshotUri: "auto"
+        snapshotUrl: "auto"
     }
 })

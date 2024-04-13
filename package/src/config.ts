@@ -56,13 +56,13 @@ export interface TldrevealConfig {
     /// or `data-tlid` attribute on the .reveal or .slides element to determine
     /// the identity of the slide deck. Defaults to `true`, if that id is found.
     useLocalStorage: boolean
-    /// Load drawing state from a URI. Set to `false` to disable this option,
-    /// set to `"auto"` to automatically determine the URI from the slide URI or
-    /// set to `{ uri: "/path/to/saved.tldrev" }` to supply a custom location.
+    /// Load drawing state from a URL. Set to `false` to disable this option,
+    /// set to `"auto"` to automatically determine the URL from the deck URL or
+    /// set to `{ url: "/path/to/saved.tldrev" }` to supply a custom location.
     /// The automatic mode replaces `.html` or `.html` in the slide path with
     /// `.tldrev` if the path ends with one of those extensions. Else it appends
     /// `/index.tldrev`.
-    snapshotUri: false | "auto" | { uri: string }
+    snapshotUrl: false | "auto" | { url: string }
 }
 
 declare global {
@@ -79,7 +79,7 @@ export const defaultTldrevealConfig: TldrevealConfig = {
     isDarkMode: true,
     automaticDarkMode: true,
     useLocalStorage: true,
-    snapshotUri: false
+    snapshotUrl: false
 }
 
 export function getTldrevealConfig(reveal: RevealApi) {
