@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          package_json_file: package/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: "20.x"
@@ -33,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
+        with:
+          version: latest
+          package_json_file: demo/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: "20.x"
