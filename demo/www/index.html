@@ -36,29 +36,50 @@
             <section>
                 <section id="configuration">
                     <h2>Installation</h2>
-                    <pre><code data-trim class="shell">
-                        npm install --save tldreveal
-                    </code></pre>
+                </section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ### Basic setup
+
+                        ```html
+                        <head>
+                            <!-- Include the tldreveal styles: -->
+                            <link rel="stylesheet" href="https://unpkg.com/tldreveal/dist/bundle/index.css" />
+                        </head>
+                        <body>
+                            <!-- Get the plugin: -->
+                            <script src="https://unpkg.com/tldreveal/dist/bundle/index.js"></script>
+                            <script>
+                                // Initialize Reveal.js with the Tldreveal plugin
+                                Reveal.initialize({
+                                    // tldreveal does not support scroll view
+                                    scrollActivationWidth: undefined,
+                                    plugins: [ Tldreveal.Tldreveal() ]
+                                })
+                            </script>
+                        </body>
+                        ```
+                    </textarea>
                 </section>
                 <section>
-                    <p>Configure the plugin:</p>
+                    <h3>From npm</h3>
+                    <pre><code data-trim class="shell">
+                        npm install tldreveal react react-dom
+                    </code></pre>
                     <pre><code data-trim class="javascript">
-                        import Reveal from "reveal.js"
+                        // Import the Tldreveal plugin
                         import { Tldreveal } from "tldreveal"
-
+    
+                        // Import the tldreveal CSS (if you use a bundler that can import CSS)
+                        import "tldreveal/dist/esm/index.css"
+    
+                        // Initialize Reveal.js with the Tldreveal plugin
                         Reveal.initialize({
-                            // Disable scroll view, because it crashes tldreveal
-                            scrollActivationWidth: null,
-                            plugins: [ Tldreveal ],
-                            tldreveal: {
-                                // If using a light Reveal.js theme, disable the default dark mode
-                                isDarkMode: false
-                            }
+                            // tldreveal does not support scroll view
+                            scrollActivationWidth: undefined,
+                            plugins: [ Tldreveal ]
                         })
                     </code></pre>
-                </section>
-                <section>
-                    <p>Reference the included CSS file:</p>
                 </section>
             </section>
             <section>
