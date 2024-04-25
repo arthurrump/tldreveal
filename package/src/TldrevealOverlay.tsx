@@ -47,6 +47,10 @@ import { defaultStyleProps, getTldrevealConfig } from "./config";
 // TODO:
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
+//   - Slide ids and dark mode detection fail, because we can't get the current slide element
+//     - See https://github.com/hakimel/reveal.js/issues/3616
+//   - Transition animation don't work, because there is no transition end in scroll view
+//     -> need to detect scroll view and disable them
 // - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
 
 const TLDREVEAL_FILE_EXTENSION = ".tldrev"
@@ -385,6 +389,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             || event.currentSlide.getAttribute("data-transition")
         const noTransition = currentTransition === "none" || currentTransition?.includes("none-in")
         const hasSameSlideId = getSlideId({ h: event.indexh, v: event.indexv }) === state.currentSlideId
+        // TODO: also disable transition in scroll view
         if (noTransition || hasSameSlideId) {
             setCurrentSlide({ h: event.indexh, v: event.indexv })
         } else {
