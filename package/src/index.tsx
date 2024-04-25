@@ -10,23 +10,6 @@ import "./style.css"
 
 function init(reveal: RevealApi) {
 
-    if (reveal.getConfig().view === "scroll") {
-        console.error(
-            "tldreveal does not work in scroll view.",
-            "Please disable the `view: 'scroll'` option in your Reveal.js configuration."
-        )
-        return
-    }
-
-    if (reveal.getConfig().scrollActivationWidth) {
-        console.warn(
-            "Reveal.js is configured to switch to scroll view for mobile-sized viewports.",
-            "Note that tldreveal will crash when scroll view is enabled.",
-            "To disable scroll view on all sizes, set `scrollActivationWidth: null` in your Reveal.js configuration.",
-            "See https://revealjs.com/scroll-view/#automatic-activation."
-        )
-    }
-
     if (reveal.getConfig().disableLayout && reveal.getConfig().tldreveal.disableLayoutWarning) {
         console.warn(
             "tldreveal assumes default Reveal.js layout to scale drawings with the slides.",
