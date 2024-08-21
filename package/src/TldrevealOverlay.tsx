@@ -38,13 +38,42 @@ import {
     TldrawUiMenuCheckboxItem,
     TLStore,
     TLStoreSnapshot,
+    DefaultToolbar,
+    SelectToolbarItem,
+    DrawToolbarItem,
+    EraserToolbarItem,
+    ArrowToolbarItem,
+    TextToolbarItem,
+    NoteToolbarItem,
+    AssetToolbarItem,
+    RectangleToolbarItem,
+    ArrowDownToolbarItem,
+    ArrowLeftToolbarItem,
+    ArrowRightToolbarItem,
+    ArrowUpToolbarItem,
+    CheckBoxToolbarItem,
+    CloudToolbarItem,
+    DiamondToolbarItem,
+    EllipseToolbarItem,
+    FrameToolbarItem,
+    HexagonToolbarItem,
+    HighlightToolbarItem,
+    LaserToolbarItem,
+    LineToolbarItem,
+    OvalToolbarItem,
+    RhombusToolbarItem,
+    StarToolbarItem,
+    TriangleToolbarItem,
+    XBoxToolbarItem,
 } from "tldraw"
-import { useAtom } from "@tldraw/state"
+import { useAtom } from "@tldraw/state-react"
 
 import { debounce, makeInt, parseOptionalBoolean } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
+// - Resizing doesn't work
+// - store.loadSnapshot is deprecated
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
 // - Fix the 40 slides with drawings limit (that's tldraw's (artificial) page limit)
@@ -101,9 +130,9 @@ function CustomMainMenu({ fileProps }: { fileProps: FileSubmenuProps }) {
             <FileSubmenu {...fileProps} />
             <ClearSubmenu />
             <EditSubmenu />
-			<ExportFileContentSubMenu />
-			<ExtrasGroup />
-			<PreferencesGroup />
+            <ExportFileContentSubMenu />
+            <ExtrasGroup />
+            <PreferencesGroup />
             <TldrawUiMenuGroup id="close">
                 <TldrawUiMenuItem {...actions["tldreveal.close"]} />
             </TldrawUiMenuGroup>
@@ -135,6 +164,39 @@ function CustomActionsMenu() {
     )
 }
 
+function CustomToolbar() {
+    return (
+        <DefaultToolbar>
+            <SelectToolbarItem />
+            <DrawToolbarItem />
+            <EraserToolbarItem />
+            <ArrowToolbarItem />
+            <TextToolbarItem />
+            <NoteToolbarItem />
+            <AssetToolbarItem />
+            <RectangleToolbarItem />
+            <EllipseToolbarItem />
+            <TriangleToolbarItem />
+            <DiamondToolbarItem />
+            <HexagonToolbarItem />
+            <OvalToolbarItem />
+            <RhombusToolbarItem />
+            <StarToolbarItem />
+            <CloudToolbarItem />
+            <XBoxToolbarItem />
+            <CheckBoxToolbarItem />
+            <ArrowLeftToolbarItem />
+            <ArrowUpToolbarItem />
+            <ArrowDownToolbarItem />
+            <ArrowRightToolbarItem />
+            <LineToolbarItem />
+            <HighlightToolbarItem />
+            <LaserToolbarItem />
+            <FrameToolbarItem />
+        </DefaultToolbar>
+    )
+}
+
 export interface TldrevealOverlayProps {
     /// The instance of Reveal this overlaid on
     reveal: RevealApi
@@ -161,7 +223,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     // Use a local user preferences atom, to prevent sharing dark mode status
     // across multiple instances
-    const userPreferences = useAtom<TLUserPreferences>("userPreferences", { id: "tldreveal", isDarkMode: config.isDarkMode })
+    const userPreferences = useAtom<TLUserPreferences>("userPreferences", { id: "tldreveal", colorScheme: config.isDarkMode ? "dark" : "light" })
     const [isolatedUser] = useState(() => createTLUser({ userPreferences, setUserPreferences: userPreferences.set }))
 
     const [saveToLocalStorage, setSaveToLocalStorage_] = 
@@ -174,7 +236,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     
     const [isReady, setIsReady] = useState(false)
     const [isShown, setIsShown] = useState(true)
-	const [isEditing, setIsEditing] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
 
     const [currentSlide, setCurrentSlide] = useState<{ h: number, v: number }>(reveal.getIndices())
 
@@ -469,9 +531,9 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     function syncEditorBounds(state = { editor }) {
         if (state.editor) {
             // Set the correct zoom and prevent further movement
-            state.editor.updateInstanceState({ canMoveCamera: true })
+            state.editor.setCameraOptions({ isLocked: true })
             state.editor.zoomToBounds(bounds, { inset: 0 })
-            state.editor.updateInstanceState({ canMoveCamera: false })
+            state.editor.setCameraOptions({ isLocked: false })
         }
     }
 
@@ -493,7 +555,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
                 state.editor.setCurrentPage(pageId)
                 // Reset undo/redo to prevent undoing changes on other pages
-                state.editor.history.clear()
+                state.editor.clearHistory()
 
                 if (deleteOldCurrent) {
                     state.editor.deletePage(oldCurrentPageId)
@@ -504,11 +566,11 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 const currentSlideClasses = 
                 reveal.getSlide(currentSlide.h, currentSlide.v).classList
                 if (currentSlideClasses.contains("has-dark-background")) {
-                    userPreferences.update(u => ({ ...u, isDarkMode: true }))
+                    userPreferences.update(u => ({ ...u, colorScheme: "dark" }))
                 } else if (currentSlideClasses.contains("has-light-background")) {
-                    userPreferences.update(u => ({ ...u, isDarkMode: false }))
+                    userPreferences.update(u => ({ ...u, colorScheme: "light" }))
                 } else {
-                    userPreferences.update(u => ({ ...u, isDarkMode: config.isDarkMode }))
+                    userPreferences.update(u => ({ ...u, colorScheme: config.isDarkMode ? "dark" : "light" }))
                 }
             }
 
@@ -542,7 +604,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         ["tldreveal.close"]: {
             id: "tldreveal.close",
             label: "tldreveal.action.close",
-            icon: "cross",
+            // Available icon types: https://github.com/tldraw/tldraw/blob/main/packages/tldraw/src/lib/ui/icon-types.ts
+            icon: "cross-2",
             readonlyOk: true,
             async onSelect(_source) {
                 setIsEditing(false)
@@ -632,7 +695,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                         }
                     }),
                     ActionsMenu: CustomActionsMenu,
-                    QuickActions: CustomQuickActions
+                    QuickActions: CustomQuickActions,
+                    Toolbar: CustomToolbar
                 }}
                 overrides={{
                     translations: customTranslations,
@@ -640,13 +704,6 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                         // Remove the keyboard shortcut for the hand tool
                         tools.hand.kbd = undefined
                         return tools
-                    },
-                    toolbar(editor, toolbar) {
-                        // Remove the hand tool from the toolbar
-                        const handIndex = toolbar.findIndex(t => t.id === "hand")
-                        if (handIndex !== -1)
-                            toolbar.splice(handIndex, 1)
-                        return toolbar
                     },
                     // Remove actions related to zooming
                     actions(editor, actions) {

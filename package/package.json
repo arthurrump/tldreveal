@@ -37,8 +37,8 @@
     "reveal.js": "^5.0"
   },
   "dependencies": {
-    "@tldraw/state": "^2.0.2",
+    "@tldraw/state-react": "~2.4.4",
     "browser-fs-access": "^0.35.0",
-    "tldraw": "^2.0.2"
+    "tldraw": "~2.4.4"
   }
 }
