@@ -567,11 +567,15 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             }
 
             if (config.automaticDarkMode) {
-                const currentSlideClasses = 
-                reveal.getSlide(currentSlide.h, currentSlide.v).classList
+                const currentSlideClasses = reveal.getSlide(currentSlide.h, currentSlide.v).classList
+                const currentVSlideClasses = reveal.getSlide(currentSlide.h).classList
                 if (currentSlideClasses.contains("has-dark-background")) {
                     userPreferences.update(u => ({ ...u, colorScheme: "dark" }))
                 } else if (currentSlideClasses.contains("has-light-background")) {
+                    userPreferences.update(u => ({ ...u, colorScheme: "light" }))
+                } else if (currentVSlideClasses.contains("has-dark-background")) {
+                    userPreferences.update(u => ({ ...u, colorScheme: "dark" }))
+                } else if (currentVSlideClasses.contains("has-light-background")) {
                     userPreferences.update(u => ({ ...u, colorScheme: "light" }))
                 } else {
                     userPreferences.update(u => ({ ...u, colorScheme: config.isDarkMode ? "dark" : "light" }))
