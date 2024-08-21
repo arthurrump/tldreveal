@@ -65,6 +65,8 @@ import {
     StarToolbarItem,
     TriangleToolbarItem,
     XBoxToolbarItem,
+    loadSnapshot,
+    getSnapshot,
 } from "tldraw"
 import { useAtom } from "@tldraw/state-react"
 
@@ -271,9 +273,10 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     const currentSlideId = useMemo(() => getSlideId(currentSlide), [ currentSlide ])
 
     function getTimestampedSnapshot(store: TLStore) : TLStoreSnapshot & { timestamp: number } {
+        const { document } = getSnapshot(store)
         return {
             timestamp: Date.now(),
-            ...store.getSnapshot()
+            ...document
         }
     }
 
@@ -340,7 +343,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
 
         if (snapshot) {
-            store.loadSnapshot(snapshot)
+            loadSnapshot(store, snapshot)
         }
 
         setIsReady(true)
