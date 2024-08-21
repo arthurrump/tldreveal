@@ -68,11 +68,10 @@ import {
 } from "tldraw"
 import { useAtom } from "@tldraw/state-react"
 
-import { debounce, makeInt, parseOptionalBoolean } from "./util"
+import { makeInt, parseOptionalBoolean } from "./util"
 import { defaultStyleProps, getTldrevealConfig } from "./config";
 
 // TODO:
-// - Resizing doesn't work
 // - store.loadSnapshot is deprecated
 // - Somehow create overlaid pages for fragment navigation
 // - Fix the overlay in scroll mode
@@ -380,6 +379,21 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
             isDebugMode: false,
             exportBackground: false
         })
+        // Lock the camera
+        state.editor.setCameraOptions({
+            // Not necessary, but the wheel shouldn't move the camera
+            wheelBehavior: "none",
+            // There are no zoom steps available to the user
+            zoomSteps: [],
+            constraints: {
+                baseZoom: "fit-max",
+                behavior: "fixed",
+                bounds: bounds,
+                initialZoom: "fit-max",
+                origin: { x: 0, y: 0 },
+                padding: { x: 0, y: 0 }
+            }
+        })
         syncEditor(state)
     }
 
@@ -505,17 +519,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }, [ currentSlideId ])
 
     const handleResize = (state = { editor }) => {
-        // Run both a throttled and debounced version: the throttled function
-        // handles the in-between values, without completely flooding tldraw
-        // with zoom requests; the debounced version then waits until the final
-        // dimensions have been reached and everything is stabilised to make
-        // sure the final adjustement puts it in the right position.
-        const throttled = throttle(() => syncEditorBounds(state), 100)
-        const debounced = debounce(() => syncEditorBounds(state), 500)
-        return () => {
-            throttled()
-            debounced()
-        }
+        return () => resetCamera(state)
     }
 
     useEffect(() => {
@@ -528,12 +532,9 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         }
     }, [ editor ])
 
-    function syncEditorBounds(state = { editor }) {
+    function resetCamera(state = { editor }) {
         if (state.editor) {
-            // Set the correct zoom and prevent further movement
-            state.editor.setCameraOptions({ isLocked: true })
-            state.editor.zoomToBounds(bounds, { inset: 0 })
-            state.editor.setCameraOptions({ isLocked: false })
+            state.editor.setCamera(state.editor.getCamera(), { reset: true })
         }
     }
 
@@ -574,8 +575,8 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
                 }
             }
 
-            // Set the bounds correctly on the new page
-            syncEditorBounds(state)
+            // Reset the camera on each new page
+            resetCamera(state)
         }
     }
 
