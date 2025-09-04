@@ -24,12 +24,12 @@
     "postpack": "rm README.md"
   },
   "devDependencies": {
-    "@types/react": "^18.2.73",
-    "@types/react-dom": "^18.2.23",
-    "@types/reveal.js": "^5.0.3",
-    "esbuild": "^0.20.2",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.4.3"
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@types/reveal.js": "^5.2.0",
+    "esbuild": "^0.25.9",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2"
   },
   "peerDependencies": {
     "react": "^18",
@@ -37,8 +37,8 @@
     "reveal.js": "^5.0"
   },
   "dependencies": {
-    "@tldraw/state-react": "~2.4.4",
-    "browser-fs-access": "^0.35.0",
-    "tldraw": "~2.4.4"
+    "@tldraw/state-react": "~2.4.6",
+    "browser-fs-access": "^0.38.0",
+    "tldraw": "~2.4.6"
   }
 }
