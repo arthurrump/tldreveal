@@ -422,7 +422,13 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
     }, [ isShown, isEditing ])
 
     function handleDKey() {
+        setIsShown(true)
         setIsEditing(true)
+    }
+
+    function handleVKey() {
+        setIsEditing(false)
+        setIsShown(isShown => !isShown)
     }
 
     const handleKeydown = (state = { isEditing }) => (event: KeyboardEvent) => {
@@ -434,6 +440,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
 
     const handleDblclick = (state = { isEditing }) => (event: MouseEvent) => {
         if (!state.isEditing) {
+            setIsShown(true)
             setIsEditing(true)
             event.stopImmediatePropagation()
         }
@@ -445,6 +452,7 @@ export function TldrevealOverlay({ reveal, container }: TldrevealOverlayProps) {
         const handleDblclick_ = handleDblclick(state)
 
         reveal.addKeyBinding({ keyCode: 68, key: "D", description: "Enter drawing mode" }, handleDKey)
+        reveal.addKeyBinding({ keyCode: 86, key: "V", description: "Toggle drawing visibility" }, handleVKey)
         window.addEventListener("dblclick", handleDblclick_, true)
         window.addEventListener("keydown", handleKeydown_, true)
         return () => {
